@@ -62,6 +62,50 @@
         "security" : [ ]
       }
     },
+    "/api/auth/redefinir-senha" : {
+      "post" : {
+        "tags" : [ "recuperacao-senha-controller" ],
+        "operationId" : "redefinir",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RedefinirSenhaPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "security" : [ ]
+      }
+    },
+    "/api/auth/recuperar-senha" : {
+      "post" : {
+        "tags" : [ "recuperacao-senha-controller" ],
+        "operationId" : "recuperar",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/RecuperarSenhaPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "202" : {
+            "description" : "Accepted"
+          }
+        },
+        "security" : [ ]
+      }
+    },
     "/api/auth/entrar" : {
       "post" : {
         "tags" : [ "autenticacao-controller" ],
@@ -166,6 +210,33 @@
           }
         },
         "required" : [ "acessoExpiraEm", "refreshToken", "tokenAcesso" ]
+      },
+      "RedefinirSenhaPedido" : {
+        "type" : "object",
+        "properties" : {
+          "token" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "novaSenha" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 10,
+            "pattern" : "^(?=.*\\p{L})(?=.*\\d).*$"
+          }
+        },
+        "required" : [ "novaSenha", "token" ]
+      },
+      "RecuperarSenhaPedido" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "email" ]
       },
       "EntrarPedido" : {
         "type" : "object",

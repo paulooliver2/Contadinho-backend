@@ -16,7 +16,17 @@ Java 25, Spring Boot 4, monólito modular (Spring Modulith), PostgreSQL 18 com F
 ./mvnw verify               # testes com Postgres real (Testcontainers), segurança, contrato e módulos
 ```
 
-Em produção, `JWT_SECRET` (32 bytes ou mais) e o banco vêm de variáveis de ambiente. O perfil `dev` só é ligado pelo `spring-boot:run`.
+No perfil `dev`, os e-mails (recuperação de senha) vão para o Mailpit do `compose.yaml`: a caixa de entrada fica em http://localhost:8025.
+
+Em produção, tudo vem de variáveis de ambiente. O perfil `dev` só é ligado pelo `spring-boot:run`.
+
+| Variável | O que é |
+| --- | --- |
+| `JWT_SECRET` | Segredo dos tokens, com 32 bytes ou mais. |
+| `SPRING_DATASOURCE_URL`, `_USERNAME`, `_PASSWORD` | Banco. |
+| `SPRING_MAIL_HOST`, `SPRING_MAIL_PORT`, `SPRING_MAIL_USERNAME`, `SPRING_MAIL_PASSWORD` | SMTP que envia o e-mail de recuperação de senha. |
+| `EMAIL_REMETENTE` | Remetente desse e-mail, como `Contadinho <nao-responda@seu-dominio>`. |
+| `RECUPERACAO_LINK` | Endereço da tela de senha nova; o e-mail leva esse link com `?token=...` no fim. |
 
 ## Organização
 

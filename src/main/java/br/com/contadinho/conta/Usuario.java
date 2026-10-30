@@ -34,6 +34,10 @@ class Usuario {
 		this.criadoEm = agora;
 	}
 
+	void trocarSenha(String senhaHash) {
+		this.senhaHash = senhaHash;
+	}
+
 	UUID getId() {
 		return id;
 	}

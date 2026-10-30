@@ -116,7 +116,7 @@ class AutenticacaoServico {
 	}
 
 	private Tokens abrirSessao(UUID usuarioId, String dispositivo, Instant agora) {
-		var refresh = EmissorTokens.novoRefresh();
+		var refresh = EmissorTokens.novoSegredo();
 		sessoes.save(new Sessao(usuarioId, EmissorTokens.hash(refresh), dispositivo, agora, tokens.refreshExpiraEm(agora)));
 		return new Tokens(tokens.acesso(usuarioId, agora), tokens.acessoExpiraEm(agora), refresh);
 	}

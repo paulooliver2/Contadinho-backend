@@ -55,7 +55,8 @@ class EmissorTokens {
 		return agora.plus(props.refreshTtl());
 	}
 
-	static String novoRefresh() {
+	/** Refresh token e token do link de recuperação de senha. */
+	static String novoSegredo() {
 		var bytes = new byte[32];
 		ALEATORIO.nextBytes(bytes);
 		return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);

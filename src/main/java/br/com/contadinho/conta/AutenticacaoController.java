@@ -8,7 +8,6 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 import org.springframework.http.HttpHeaders;
@@ -33,13 +32,10 @@ class AutenticacaoController {
 		this.servico = servico;
 	}
 
-	/** RN-02: pelo menos 10 caracteres, com letras e números. O bcrypt só considera os primeiros 72 bytes. */
 	record CadastroPedido(
 			@NotBlank(message = "Diga como quer ser chamado.") @Size(max = 80, message = "Use até 80 caracteres.") String nome,
 			@NotBlank(message = "Informe o e-mail.") @Email(message = "Este e-mail não parece válido.") @Size(max = 254, message = "E-mail longo demais.") String email,
-			@NotNull(message = "Crie uma senha.")
-			@Size(min = 10, max = 64, message = "A senha precisa ter de 10 a 64 caracteres.")
-			@Pattern(regexp = "^(?=.*\\p{L})(?=.*\\d).*$", message = "A senha precisa ter letras e números.") String senha) {
+			@SenhaForte String senha) {
 
 		/** Espaços que o teclado do celular deixa no começo ou no fim não contam; a senha fica como veio. */
 		CadastroPedido {
@@ -57,7 +53,7 @@ class AutenticacaoController {
 		}
 	}
 
-	private static String semEspacos(String texto) {
+	static String semEspacos(String texto) {
 		return texto == null ? null : texto.strip();
 	}
 
