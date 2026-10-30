@@ -1,0 +1,16 @@
+# Banco local. O `./mvnw spring-boot:run` sobe este serviço sozinho (spring-boot-docker-compose).
+services:
+  postgres:
+    image: 'postgres:17'
+    environment:
+      - 'POSTGRES_DB=contadinho'
+      - 'POSTGRES_USER=contadinho'
+      - 'POSTGRES_PASSWORD=contadinho'
+      - 'TZ=America/Sao_Paulo'
+    ports:
+      - '5432:5432'
+    volumes:
+      - 'contadinho-db:/var/lib/postgresql/data'
+
+volumes:
+  contadinho-db:

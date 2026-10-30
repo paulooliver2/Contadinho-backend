@@ -1,0 +1,23 @@
+{
+  "openapi" : "3.1.0",
+  "info" : {
+    "title" : "Contadinho API",
+    "version" : "v1"
+  },
+  "servers" : [ {
+    "url" : "/"
+  } ],
+  "security" : [ {
+    "bearer" : [ ]
+  } ],
+  "paths" : { },
+  "components" : {
+    "securitySchemes" : {
+      "bearer" : {
+        "type" : "http",
+        "scheme" : "bearer",
+        "bearerFormat" : "JWT"
+      }
+    }
+  }
+}
