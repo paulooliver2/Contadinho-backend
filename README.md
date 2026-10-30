@@ -2,7 +2,7 @@
 
 API do Contadinho, app pessoal de finanças que divide a fatura do cartão com a família e controla quem já pagou.
 
-Java 21, Spring Boot 4, monólito modular (Spring Modulith), PostgreSQL 17 com Flyway, autenticação com JWT.
+Java 21, Spring Boot 4, monólito modular (Spring Modulith), PostgreSQL 18 com Flyway, autenticação com JWT.
 
 ## Pré-requisitos
 
