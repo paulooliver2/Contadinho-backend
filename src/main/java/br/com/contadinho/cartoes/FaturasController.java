@@ -62,11 +62,13 @@ class FaturasController {
 			@NotNull BigDecimal valor,
 			Integer parcelaAtual,
 			Integer parcelaTotal,
+			/** Final do cartão que fez a compra, quando o arquivo traz (RN-19). */
+			String finalCartao,
 			@NotNull Lancamento.Origem origem) {
 
 		static LancamentoResposta de(Lancamento l) {
 			return new LancamentoResposta(l.getId(), l.getData(), l.getDescricao(), l.getValor(), l.getParcelaAtual(),
-					l.getParcelaTotal(), l.getOrigem());
+					l.getParcelaTotal(), l.getFinalCartao(), l.getOrigem());
 		}
 	}
 

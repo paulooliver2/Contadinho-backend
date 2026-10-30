@@ -4,10 +4,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.UUID;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 /**
  * Compra, parcela ou estorno de uma fatura. Vem do arquivo do banco (HU-06) ou é digitada (HU-47).
@@ -49,6 +53,11 @@ class Lancamento {
 
 	private Short parcelaTotal;
 
+	/** Final do cartão que fez a compra, quando o arquivo traz (RN-19). */
+	@JdbcTypeCode(SqlTypes.CHAR)
+	@Column(length = 4)
+	private String finalCartao;
+
 	protected Lancamento() {
 	}
 
@@ -63,7 +72,7 @@ class Lancamento {
 		return l;
 	}
 
-	static Lancamento doArquivo(UUID usuarioId, UUID cartaoId, UUID faturaId, UUID importacaoId, LeitorOfx.Item item) {
+	static Lancamento doArquivo(UUID usuarioId, UUID cartaoId, UUID faturaId, UUID importacaoId, ArquivoFatura.Item item) {
 		var l = new Lancamento();
 		l.id = UUID.randomUUID();
 		l.usuarioId = usuarioId;
@@ -78,10 +87,11 @@ class Lancamento {
 	 * RN-59: a digitada era a mesma compra do arquivo. Passa a ser do arquivo, com a descrição do banco;
 	 * responsável, categoria e essencial ficam como estavam.
 	 */
-	void casar(UUID importacaoId, LeitorOfx.Item item) {
+	void casar(UUID importacaoId, ArquivoFatura.Item item) {
 		this.origem = Origem.ARQUIVO;
 		this.importacaoId = importacaoId;
 		this.idExterno = item.idExterno();
+		this.finalCartao = item.finalCartao();
 		this.descricao = item.descricao();
 		this.descricaoNormalizada = Descricoes.normalizar(item.descricao());
 		if (item.parcelaTotal() != null) {
@@ -114,6 +124,10 @@ class Lancamento {
 
 	String getIdExterno() {
 		return idExterno;
+	}
+
+	String getFinalCartao() {
+		return finalCartao;
 	}
 
 	Origem getOrigem() {

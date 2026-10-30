@@ -170,6 +170,50 @@ class ImportacoesTests {
 	}
 
 	@Test
+	void pdfComSenhaPedeASenhaENaoGuardaNada() {
+		var pdf = Base64.getEncoder().encodeToString(ArquivosPdf.inter("12345"));
+
+		var semSenha = previa(Map.of("nomeArquivo", "Fatura.pdf", "conteudo", pdf));
+		var senhaErrada = previa(Map.of("nomeArquivo", "Fatura.pdf", "conteudo", pdf, "senha", "00000"));
+
+		assertThat(semSenha.status()).isEqualTo(422);
+		assertThat(semSenha.objeto()).containsEntry("codigo", "SENHA_PDF").containsEntry("detail", LeitorPdf.PEDE_SENHA);
+		assertThat(senhaErrada.objeto()).containsEntry("codigo", "SENHA_PDF_INCORRETA");
+		assertThat(jdbc.queryForObject("select count(*) from importacao i join fatura f on f.id = i.fatura_id where f.cartao_id = ?::uuid",
+				Integer.class, cartaoId)).isZero();
+	}
+
+	@Test
+	void importaOPdfDoInterNaFaturaQueOArquivoInforma() {
+		var pdf = Base64.getEncoder().encodeToString(ArquivosPdf.inter("12345"));
+		var corpo = Map.<String, Object>of("nomeArquivo", "Fatura.pdf", "conteudo", pdf, "senha", "12345");
+
+		var previa = previa(corpo);
+		assertThat(previa.status()).isEqualTo(200);
+		// O vencimento escrito no PDF (12/11) manda; pelas datas, a sugestão seria outra.
+		assertThat(previa.objeto()).containsEntry("mes", "2026-11").containsEntry("novos", 4).containsEntry("ignorados", 1)
+			.containsEntry("totalLido", 467.4).containsEntry("totalArquivo", 467.4);
+		assertThat(itens(previa)).extracting(i -> i.get("finalCartao")).containsExactly("1111", "1111", "2222", "2222");
+
+		var confirmacao = new HashMap<String, Object>(corpo);
+		confirmacao.putAll(Map.of("mes", "2026-11", "mesmas", List.of()));
+		var importada = api.post("/api/cartoes/" + cartaoId + "/importacoes", confirmacao, dono);
+		var deNovo = api.post("/api/cartoes/" + cartaoId + "/importacoes", confirmacao, dono);
+
+		assertThat(importada.status()).isEqualTo(201);
+		assertThat(importada.objeto()).containsEntry("novos", 4);
+		assertThat(deNovo.objeto()).containsEntry("novos", 0).containsEntry("jaExistiam", 4);
+		assertThat(jdbc.queryForList("select formato, modelo from importacao where id = ?::uuid", importada.texto("id")))
+			.containsExactly(Map.of("formato", "PDF", "modelo", "PDF_INTER"));
+		var fatura = api.get("/api/cartoes/" + cartaoId + "/faturas/2026-11", dono).objeto();
+		assertThat(fatura.get("total")).isEqualTo(467.4);
+		List<Object> finais = ((List<?>) fatura.get("lancamentos")).stream()
+			.<Object>map(l -> ((Map<?, ?>) l).get("finalCartao"))
+			.toList();
+		assertThat(finais).containsOnly("1111", "2222");
+	}
+
+	@Test
 	void cartaoDeOutroDonoNaoImporta() {
 		var outroDono = api.novoDono();
 

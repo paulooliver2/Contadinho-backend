@@ -24,9 +24,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Importar a fatura em OFX (HU-06, HU-07, RN-59): primeiro a prévia, depois a confirmação com o mesmo arquivo.
- * O arquivo vai em base64 dentro do JSON, para o servidor receber os bytes como estão (o OFX 1 costuma vir em
- * windows-1252).
+ * Importar a fatura em PDF ou OFX (HU-06, HU-07, HU-39, RN-59): primeiro a prévia, depois a confirmação com o
+ * mesmo arquivo. O arquivo vai em base64 dentro do JSON, para o servidor receber os bytes como estão.
  */
 @RestController
 class ImportacoesController {
@@ -45,6 +44,8 @@ class ImportacoesController {
 	record PreviaPedido(
 			@NotBlank(message = "Escolha o arquivo.") @Size(max = 255) String nomeArquivo,
 			@NotBlank(message = "Escolha o arquivo.") @Size(max = LIMITE_BASE64, message = "O arquivo passa de 2 MB.") String conteudo,
+			/** Senha do PDF, quando ele tem (HU-39). Só abre o arquivo; não é guardada. */
+			@Size(max = 64) String senha,
 			/** Fatura de destino escolhida na prévia; vazio, o servidor sugere (RN-09). */
 			@Pattern(regexp = MES, message = "Mês inválido.") String mes) {
 	}
@@ -56,6 +57,8 @@ class ImportacoesController {
 	record ConfirmacaoPedido(
 			@NotBlank(message = "Escolha o arquivo.") @Size(max = 255) String nomeArquivo,
 			@NotBlank(message = "Escolha o arquivo.") @Size(max = LIMITE_BASE64, message = "O arquivo passa de 2 MB.") String conteudo,
+			/** Senha do PDF, quando ele tem (HU-39). Só abre o arquivo; não é guardada. */
+			@Size(max = 64) String senha,
 			@NotNull(message = "Escolha a fatura.") @Pattern(regexp = MES, message = "Mês inválido.") String mes,
 			@NotNull List<@Valid MesmaCompra> mesmas) {
 	}
@@ -70,6 +73,7 @@ class ImportacoesController {
 			@NotNull BigDecimal valor,
 			Integer parcelaAtual,
 			Integer parcelaTotal,
+			String finalCartao,
 			@NotNull Boolean jaExiste,
 			ParecidaResposta parecida) {
 	}
@@ -96,12 +100,12 @@ class ImportacoesController {
 	PreviaResposta previa(@UsuarioLogado UUID usuarioId, @PathVariable UUID cartaoId,
 			@Valid @RequestBody PreviaPedido pedido) {
 		var mes = pedido.mes() == null ? null : YearMonth.parse(pedido.mes());
-		var previa = servico.previa(usuarioId, cartaoId, pedido.nomeArquivo(), bytes(pedido.conteudo()), mes);
+		var previa = servico.previa(usuarioId, cartaoId, pedido.nomeArquivo(), bytes(pedido.conteudo()), pedido.senha(), mes);
 		var itens = previa.itens().stream().map(i -> {
 			var item = i.item();
 			var parecida = i.parecida() == null ? null : new ParecidaResposta(i.parecida().getId(), i.parecida().getDescricao());
 			return new ItemPreviaResposta(item.idExterno(), item.data(), item.descricao(), item.valor(),
-					item.parcelaAtual(), item.parcelaTotal(), i.jaExiste(), parecida);
+					item.parcelaAtual(), item.parcelaTotal(), item.finalCartao(), i.jaExiste(), parecida);
 		}).toList();
 		var ciclo = previa.ciclo();
 		int jaExistiam = (int) previa.itens().stream().filter(ImportacaoServico.ItemPrevia::jaExiste).count();
@@ -117,7 +121,7 @@ class ImportacoesController {
 		var mesmas = new LinkedHashMap<String, UUID>();
 		pedido.mesmas().forEach(m -> mesmas.put(m.idExterno(), m.lancamentoId()));
 		var resultado = servico.importar(usuarioId, cartaoId, pedido.nomeArquivo(), bytes(pedido.conteudo()),
-				YearMonth.parse(pedido.mes()), mesmas);
+				pedido.senha(), YearMonth.parse(pedido.mes()), mesmas);
 		return new ImportacaoResposta(resultado.importacaoId(), resultado.mes().toString(), resultado.novos(),
 				resultado.jaExistiam(), resultado.casadas());
 	}
