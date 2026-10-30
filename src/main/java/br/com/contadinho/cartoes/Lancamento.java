@@ -63,6 +63,33 @@ class Lancamento {
 		return l;
 	}
 
+	static Lancamento doArquivo(UUID usuarioId, UUID cartaoId, UUID faturaId, UUID importacaoId, LeitorOfx.Item item) {
+		var l = new Lancamento();
+		l.id = UUID.randomUUID();
+		l.usuarioId = usuarioId;
+		l.cartaoId = cartaoId;
+		l.faturaId = faturaId;
+		l.corrigir(new Compra(item.data(), item.descricao(), item.valor(), item.parcelaAtual(), item.parcelaTotal()));
+		l.casar(importacaoId, item);
+		return l;
+	}
+
+	/**
+	 * RN-59: a digitada era a mesma compra do arquivo. Passa a ser do arquivo, com a descrição do banco;
+	 * responsável, categoria e essencial ficam como estavam.
+	 */
+	void casar(UUID importacaoId, LeitorOfx.Item item) {
+		this.origem = Origem.ARQUIVO;
+		this.importacaoId = importacaoId;
+		this.idExterno = item.idExterno();
+		this.descricao = item.descricao();
+		this.descricaoNormalizada = Descricoes.normalizar(item.descricao());
+		if (item.parcelaTotal() != null) {
+			this.parcelaAtual = item.parcelaAtual().shortValue();
+			this.parcelaTotal = item.parcelaTotal().shortValue();
+		}
+	}
+
 	/** RN-60: só a digitada pode mudar esses campos. */
 	void corrigir(Compra compra) {
 		this.data = compra.data();
@@ -83,6 +110,10 @@ class Lancamento {
 
 	UUID getFaturaId() {
 		return faturaId;
+	}
+
+	String getIdExterno() {
+		return idExterno;
 	}
 
 	Origem getOrigem() {

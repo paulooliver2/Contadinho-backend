@@ -113,6 +113,80 @@
         }
       }
     },
+    "/api/cartoes/{cartaoId}/importacoes" : {
+      "post" : {
+        "tags" : [ "importacoes-controller" ],
+        "operationId" : "importar",
+        "parameters" : [ {
+          "name" : "cartaoId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConfirmacaoPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ImportacaoResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cartoes/{cartaoId}/importacoes/previa" : {
+      "post" : {
+        "tags" : [ "importacoes-controller" ],
+        "operationId" : "previa",
+        "parameters" : [ {
+          "name" : "cartaoId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PreviaPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PreviaResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/cartoes/{cartaoId}/faturas/{mes}/lancamentos" : {
       "post" : {
         "tags" : [ "faturas-controller" ],
@@ -512,6 +586,178 @@
           }
         },
         "required" : [ "apelido", "banco", "bancoNome", "diaFechamento", "diaVencimento", "faturaAberta", "id", "ultimos4" ]
+      },
+      "ConfirmacaoPedido" : {
+        "type" : "object",
+        "properties" : {
+          "nomeArquivo" : {
+            "type" : "string",
+            "maxLength" : 255,
+            "minLength" : 0
+          },
+          "conteudo" : {
+            "type" : "string",
+            "maxLength" : 2800000,
+            "minLength" : 0
+          },
+          "mes" : {
+            "type" : "string",
+            "pattern" : "\\d{4}-(0[1-9]|1[0-2])"
+          },
+          "mesmas" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MesmaCompra"
+            }
+          }
+        },
+        "required" : [ "conteudo", "mes", "mesmas", "nomeArquivo" ]
+      },
+      "MesmaCompra" : {
+        "type" : "object",
+        "properties" : {
+          "idExterno" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "lancamentoId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "idExterno", "lancamentoId" ]
+      },
+      "ImportacaoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "mes" : {
+            "type" : "string"
+          },
+          "novos" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "jaExistiam" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "casadas" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "casadas", "id", "jaExistiam", "mes", "novos" ]
+      },
+      "PreviaPedido" : {
+        "type" : "object",
+        "properties" : {
+          "nomeArquivo" : {
+            "type" : "string",
+            "maxLength" : 255,
+            "minLength" : 0
+          },
+          "conteudo" : {
+            "type" : "string",
+            "maxLength" : 2800000,
+            "minLength" : 0
+          },
+          "mes" : {
+            "type" : "string",
+            "pattern" : "\\d{4}-(0[1-9]|1[0-2])"
+          }
+        },
+        "required" : [ "conteudo", "nomeArquivo" ]
+      },
+      "ItemPreviaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "idExterno" : {
+            "type" : "string"
+          },
+          "data" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "descricao" : {
+            "type" : "string"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "parcelaAtual" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "parcelaTotal" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "jaExiste" : {
+            "type" : "boolean"
+          },
+          "parecida" : {
+            "$ref" : "#/components/schemas/ParecidaResposta"
+          }
+        },
+        "required" : [ "data", "descricao", "idExterno", "jaExiste", "valor" ]
+      },
+      "ParecidaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "descricao" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "descricao", "id" ]
+      },
+      "PreviaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "mes" : {
+            "type" : "string"
+          },
+          "fechamento" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "vencimento" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "novos" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "jaExistiam" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "ignorados" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "totalLido" : {
+            "type" : "number"
+          },
+          "totalArquivo" : {
+            "type" : "number"
+          },
+          "itens" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ItemPreviaResposta"
+            }
+          }
+        },
+        "required" : [ "fechamento", "ignorados", "itens", "jaExistiam", "mes", "novos", "totalLido", "vencimento" ]
       },
       "SessaoPedido" : {
         "type" : "object",

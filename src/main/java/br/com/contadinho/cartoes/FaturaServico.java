@@ -62,8 +62,7 @@ class FaturaServico {
 	}
 
 	Lancamento adicionar(UUID usuarioId, UUID cartaoId, YearMonth mes, Lancamento.Compra compra) {
-		var cartao = cartao(usuarioId, cartaoId);
-		var fatura = gravada(cartaoId, mes).orElseGet(() -> faturas.save(new Fatura(usuarioId, cartaoId, cartao.ciclo(mes))));
+		var fatura = gravarFatura(usuarioId, cartao(usuarioId, cartaoId), mes);
 		conferir(compra, fatura);
 		return lancamentos.save(Lancamento.digitado(usuarioId, cartaoId, fatura.getId(), compra));
 	}
@@ -79,13 +78,25 @@ class FaturaServico {
 		lancamentos.delete(digitado(usuarioId, lancamentoId));
 	}
 
-	private Cartao cartao(UUID usuarioId, UUID cartaoId) {
+	/** Cartão ativo do dono; de outro dono, ou encerrado, é 404 (RNF-01). */
+	Cartao cartao(UUID usuarioId, UUID cartaoId) {
 		return cartoes.findByIdAndUsuarioIdAndEncerradoEmIsNull(cartaoId, usuarioId)
 			.orElseThrow(() -> new ErroApi(HttpStatus.NOT_FOUND, CARTAO_NAO_ENCONTRADO));
 	}
 
-	private Optional<Fatura> gravada(UUID cartaoId, YearMonth mes) {
+	Optional<Fatura> gravada(UUID cartaoId, YearMonth mes) {
 		return faturas.findFirstByCartaoIdAndVencimentoBetweenOrderByVencimento(cartaoId, mes.atDay(1), mes.atEndOfMonth());
+	}
+
+	/** As datas da fatura do mês: as gravadas, se ela já existe, ou as do cálculo (RN-58). */
+	Cartao.Ciclo ciclo(Cartao cartao, YearMonth mes) {
+		return gravada(cartao.getId(), mes)
+			.map(f -> new Cartao.Ciclo(mes, f.getFechamento(), f.getVencimento()))
+			.orElseGet(() -> cartao.ciclo(mes));
+	}
+
+	Fatura gravarFatura(UUID usuarioId, Cartao cartao, YearMonth mes) {
+		return gravada(cartao.getId(), mes).orElseGet(() -> faturas.save(new Fatura(usuarioId, cartao.getId(), cartao.ciclo(mes))));
 	}
 
 	private Lancamento digitado(UUID usuarioId, UUID lancamentoId) {
