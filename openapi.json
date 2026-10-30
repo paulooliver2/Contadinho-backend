@@ -11,6 +11,61 @@
     "bearer" : [ ]
   } ],
   "paths" : {
+    "/api/pessoas/{id}" : {
+      "put" : {
+        "tags" : [ "pessoas-controller" ],
+        "operationId" : "alterar",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PessoaPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PessoaResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "pessoas-controller" ],
+        "operationId" : "excluir",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
     "/api/lancamentos/{id}" : {
       "put" : {
         "tags" : [ "faturas-controller" ],
@@ -49,7 +104,7 @@
       },
       "delete" : {
         "tags" : [ "faturas-controller" ],
-        "operationId" : "excluir",
+        "operationId" : "excluir_1",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -66,10 +121,120 @@
         }
       }
     },
+    "/api/pessoas" : {
+      "get" : {
+        "tags" : [ "pessoas-controller" ],
+        "operationId" : "listar",
+        "parameters" : [ {
+          "name" : "arquivadas",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "boolean",
+            "default" : false
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/PessoaResposta"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "pessoas-controller" ],
+        "operationId" : "cadastrar",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PessoaPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PessoaResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pessoas/{id}/desarquivar" : {
+      "post" : {
+        "tags" : [ "pessoas-controller" ],
+        "operationId" : "desarquivar",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PessoaResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pessoas/{id}/arquivar" : {
+      "post" : {
+        "tags" : [ "pessoas-controller" ],
+        "operationId" : "arquivar",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PessoaResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/cartoes" : {
       "get" : {
         "tags" : [ "cartoes-controller" ],
-        "operationId" : "listar",
+        "operationId" : "listar_1",
         "responses" : {
           "200" : {
             "description" : "OK",
@@ -88,7 +253,7 @@
       },
       "post" : {
         "tags" : [ "cartoes-controller" ],
-        "operationId" : "cadastrar",
+        "operationId" : "cadastrar_1",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -358,7 +523,7 @@
     "/api/auth/cadastro" : {
       "post" : {
         "tags" : [ "autenticacao-controller" ],
-        "operationId" : "cadastrar_1",
+        "operationId" : "cadastrar_2",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -460,6 +625,49 @@
   },
   "components" : {
     "schemas" : {
+      "PessoaPedido" : {
+        "type" : "object",
+        "properties" : {
+          "nome" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          },
+          "apelido" : {
+            "type" : "string",
+            "maxLength" : 40,
+            "minLength" : 0
+          },
+          "whatsapp" : {
+            "type" : "string",
+            "maxLength" : 30,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "nome" ]
+      },
+      "PessoaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "nome" : {
+            "type" : "string"
+          },
+          "apelido" : {
+            "type" : "string"
+          },
+          "whatsapp" : {
+            "type" : "string"
+          },
+          "arquivada" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "arquivada", "id", "nome" ]
+      },
       "CompraPedido" : {
         "type" : "object",
         "properties" : {

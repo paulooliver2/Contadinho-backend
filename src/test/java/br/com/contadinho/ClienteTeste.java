@@ -54,10 +54,13 @@ public class ClienteTeste {
 		return post(caminho, corpo, null);
 	}
 
+	/** Com {@code corpo} null, envia o POST sem corpo (ações como arquivar). */
 	public Resposta post(String caminho, Object corpo, String tokenAcesso) {
-		var r = http.post().uri(caminho).headers(h -> autorizar(h, tokenAcesso))
-			.contentType(MediaType.APPLICATION_JSON).body(corpo)
-			.retrieve().toEntity(Object.class);
+		var pedido = http.post().uri(caminho).headers(h -> autorizar(h, tokenAcesso));
+		if (corpo != null) {
+			pedido.contentType(MediaType.APPLICATION_JSON).body(corpo);
+		}
+		var r = pedido.retrieve().toEntity(Object.class);
 		return new Resposta(r.getStatusCode().value(), r.getBody(), r.getHeaders());
 	}
 
