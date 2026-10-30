@@ -5,7 +5,9 @@ import java.util.Map;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -27,6 +29,15 @@ class TratamentoErros extends ResponseEntityExceptionHandler {
 		problema.setTitle("Dados inválidos");
 		problema.setDetail("Confira os campos destacados.");
 		problema.setProperty("campos", campos);
+		return handleExceptionInternal(ex, problema, headers, status, request);
+	}
+
+	/** JSON quebrado ou valor fora da lista (ex.: um banco que não existe). */
+	@Override
+	protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
+			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
+		var problema = ProblemDetail.forStatusAndDetail(status, "Não deu para entender os dados enviados. Confira e tente de novo.");
+		problema.setTitle("Dados inválidos");
 		return handleExceptionInternal(ex, problema, headers, status, request);
 	}
 

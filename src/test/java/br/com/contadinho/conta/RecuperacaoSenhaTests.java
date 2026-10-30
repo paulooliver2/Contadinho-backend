@@ -1,7 +1,7 @@
 package br.com.contadinho.conta;
 
-import static br.com.contadinho.conta.ClienteTeste.SENHA;
-import static br.com.contadinho.conta.ClienteTeste.emailNovo;
+import static br.com.contadinho.ClienteTeste.SENHA;
+import static br.com.contadinho.ClienteTeste.emailNovo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.after;
@@ -12,6 +12,7 @@ import static org.mockito.Mockito.verify;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import br.com.contadinho.ClienteTeste;
 import br.com.contadinho.TestcontainersConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -148,7 +149,7 @@ class RecuperacaoSenhaTests {
 		var fraca = redefinir(tokenDo(emailEnviado()), "semnumeros");
 
 		assertThat(fraca.status()).isEqualTo(400);
-		assertThat(fraca.corpo().get("campos")).isEqualTo(Map.of("novaSenha", "A senha precisa ter letras e números."));
+		assertThat(fraca.objeto().get("campos")).isEqualTo(Map.of("novaSenha", "A senha precisa ter letras e números."));
 	}
 
 	@Test

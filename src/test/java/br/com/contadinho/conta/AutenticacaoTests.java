@@ -1,13 +1,14 @@
 package br.com.contadinho.conta;
 
-import static br.com.contadinho.conta.ClienteTeste.SENHA;
-import static br.com.contadinho.conta.ClienteTeste.emailNovo;
+import static br.com.contadinho.ClienteTeste.SENHA;
+import static br.com.contadinho.ClienteTeste.emailNovo;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 
+import br.com.contadinho.ClienteTeste;
 import br.com.contadinho.TestcontainersConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -50,7 +51,7 @@ class AutenticacaoTests {
 		assertThat(cadastro.texto("refreshToken")).isNotBlank();
 		var eu = api.conta(cadastro.texto("tokenAcesso"));
 		assertThat(eu.status()).isEqualTo(200);
-		assertThat(eu.corpo()).containsEntry("nome", "Paulo").containsEntry("email", email);
+		assertThat(eu.objeto()).containsEntry("nome", "Paulo").containsEntry("email", email);
 	}
 
 	@Test
@@ -78,9 +79,9 @@ class AutenticacaoTests {
 		var curta = api.post("/api/auth/cadastro", Map.of("nome", "Paulo", "email", emailNovo(), "senha", "abc123"));
 
 		assertThat(soLetras.status()).isEqualTo(400);
-		assertThat(soLetras.corpo().get("campos")).isEqualTo(Map.of("senha", "A senha precisa ter letras e números."));
+		assertThat(soLetras.objeto().get("campos")).isEqualTo(Map.of("senha", "A senha precisa ter letras e números."));
 		assertThat(curta.status()).isEqualTo(400);
-		assertThat(curta.corpo().get("campos")).isEqualTo(Map.of("senha", "A senha precisa ter de 10 a 64 caracteres."));
+		assertThat(curta.objeto().get("campos")).isEqualTo(Map.of("senha", "A senha precisa ter de 10 a 64 caracteres."));
 	}
 
 	@Test

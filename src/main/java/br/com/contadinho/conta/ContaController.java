@@ -3,11 +3,10 @@ package br.com.contadinho.conta;
 import java.util.UUID;
 
 import br.com.contadinho.comum.ErroApi;
+import br.com.contadinho.comum.UsuarioLogado;
 import jakarta.validation.constraints.NotNull;
 
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,8 +25,8 @@ class ContaController {
 	}
 
 	@GetMapping
-	Conta eu(@AuthenticationPrincipal Jwt jwt) {
-		return usuarios.findById(UUID.fromString(jwt.getSubject()))
+	Conta eu(@UsuarioLogado UUID usuarioId) {
+		return usuarios.findById(usuarioId)
 			.map(u -> new Conta(u.getId(), u.getNome(), u.getEmail()))
 			.orElseThrow(() -> new ErroApi(HttpStatus.UNAUTHORIZED, AutenticacaoServico.SESSAO_ENCERRADA));
 	}
