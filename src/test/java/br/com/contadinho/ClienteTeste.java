@@ -67,6 +67,19 @@ public class ClienteTeste {
 		return new Resposta(r.getStatusCode().value(), r.getBody(), r.getHeaders());
 	}
 
+	public Resposta put(String caminho, Object corpo, String tokenAcesso) {
+		var r = http.put().uri(caminho).headers(h -> autorizar(h, tokenAcesso))
+			.contentType(MediaType.APPLICATION_JSON).body(corpo)
+			.retrieve().toEntity(Object.class);
+		return new Resposta(r.getStatusCode().value(), r.getBody(), r.getHeaders());
+	}
+
+	public Resposta delete(String caminho, String tokenAcesso) {
+		var r = http.delete().uri(caminho).headers(h -> autorizar(h, tokenAcesso))
+			.retrieve().toEntity(Object.class);
+		return new Resposta(r.getStatusCode().value(), r.getBody(), r.getHeaders());
+	}
+
 	private static void autorizar(HttpHeaders cabecalhos, String tokenAcesso) {
 		if (tokenAcesso != null) {
 			cabecalhos.setBearerAuth(tokenAcesso);

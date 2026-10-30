@@ -2,6 +2,7 @@ package br.com.contadinho.cartoes;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDate;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -23,7 +24,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * Cadastro e lista de cartões (HU-05).
+ * Cadastro e lista de cartões (HU-05). As faturas ficam no {@link FaturasController}.
  */
 @RestController
 @RequestMapping("/api/cartoes")
@@ -65,11 +66,13 @@ class CartoesController {
 			@NotNull String bancoNome,
 			@NotNull String ultimos4,
 			@NotNull Integer diaFechamento,
-			@NotNull Integer diaVencimento) {
+			@NotNull Integer diaVencimento,
+			/** Mês de vencimento da fatura aberta, como 2026-11 (RN-58). */
+			@NotNull String faturaAberta) {
 
-		static CartaoResposta de(Cartao c) {
+		static CartaoResposta de(Cartao c, LocalDate hoje) {
 			return new CartaoResposta(c.getId(), c.getApelido(), c.getBanco(), c.getBanco().nome(), c.getUltimos4(),
-					c.getDiaFechamento(), c.getDiaVencimento());
+					c.getDiaFechamento(), c.getDiaVencimento(), c.mesAberto(hoje).toString());
 		}
 	}
 
@@ -81,7 +84,7 @@ class CartoesController {
 	@GetMapping
 	List<CartaoResposta> listar(@UsuarioLogado UUID usuarioId) {
 		return cartoes.findByUsuarioIdAndEncerradoEmIsNullOrderByCriadoEm(usuarioId).stream()
-			.map(CartaoResposta::de)
+			.map(c -> CartaoResposta.de(c, LocalDate.now(clock)))
 			.toList();
 	}
 
@@ -93,7 +96,7 @@ class CartoesController {
 				: pedido.apelido();
 		var cartao = new Cartao(usuarioId, apelido, pedido.banco(), pedido.ultimos4(), pedido.diaFechamento(),
 				pedido.diaVencimento(), Instant.now(clock));
-		return CartaoResposta.de(cartoes.save(cartao));
+		return CartaoResposta.de(cartoes.save(cartao), LocalDate.now(clock));
 	}
 
 }

@@ -11,6 +11,61 @@
     "bearer" : [ ]
   } ],
   "paths" : {
+    "/api/lancamentos/{id}" : {
+      "put" : {
+        "tags" : [ "faturas-controller" ],
+        "operationId" : "corrigir",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CompraPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LancamentoResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "faturas-controller" ],
+        "operationId" : "excluir",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
     "/api/cartoes" : {
       "get" : {
         "tags" : [ "cartoes-controller" ],
@@ -51,6 +106,50 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/CartaoResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/cartoes/{cartaoId}/faturas/{mes}/lancamentos" : {
+      "post" : {
+        "tags" : [ "faturas-controller" ],
+        "operationId" : "adicionar",
+        "parameters" : [ {
+          "name" : "cartaoId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "mes",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CompraPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/LancamentoResposta"
                 }
               }
             }
@@ -229,6 +328,40 @@
         }
       }
     },
+    "/api/cartoes/{cartaoId}/faturas/{mes}" : {
+      "get" : {
+        "tags" : [ "faturas-controller" ],
+        "operationId" : "ver",
+        "parameters" : [ {
+          "name" : "cartaoId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "mes",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/FaturaResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/cartoes/bancos" : {
       "get" : {
         "tags" : [ "cartoes-controller" ],
@@ -253,6 +386,68 @@
   },
   "components" : {
     "schemas" : {
+      "CompraPedido" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "descricao" : {
+            "type" : "string",
+            "maxLength" : 255,
+            "minLength" : 0
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "parcelaAtual" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 99,
+            "minimum" : 1
+          },
+          "parcelaTotal" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 99,
+            "minimum" : 1
+          }
+        },
+        "required" : [ "data", "descricao", "valor" ]
+      },
+      "LancamentoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "data" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "descricao" : {
+            "type" : "string"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "parcelaAtual" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "parcelaTotal" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "origem" : {
+            "type" : "string",
+            "enum" : [ "ARQUIVO", "MANUAL" ]
+          }
+        },
+        "required" : [ "data", "descricao", "id", "origem", "valor" ]
+      },
       "NovoCartaoPedido" : {
         "type" : "object",
         "properties" : {
@@ -311,9 +506,12 @@
           "diaVencimento" : {
             "type" : "integer",
             "format" : "int32"
+          },
+          "faturaAberta" : {
+            "type" : "string"
           }
         },
-        "required" : [ "apelido", "banco", "bancoNome", "diaFechamento", "diaVencimento", "id", "ultimos4" ]
+        "required" : [ "apelido", "banco", "bancoNome", "diaFechamento", "diaVencimento", "faturaAberta", "id", "ultimos4" ]
       },
       "SessaoPedido" : {
         "type" : "object",
@@ -421,6 +619,35 @@
           }
         },
         "required" : [ "email", "id", "nome" ]
+      },
+      "FaturaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "mes" : {
+            "type" : "string"
+          },
+          "fechamento" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "vencimento" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "aberta" : {
+            "type" : "boolean"
+          },
+          "total" : {
+            "type" : "number"
+          },
+          "lancamentos" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/LancamentoResposta"
+            }
+          }
+        },
+        "required" : [ "aberta", "fechamento", "lancamentos", "mes", "total", "vencimento" ]
       },
       "BancoResposta" : {
         "type" : "object",

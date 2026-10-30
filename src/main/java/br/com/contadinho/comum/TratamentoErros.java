@@ -3,6 +3,7 @@ package br.com.contadinho.comum;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import org.springframework.beans.TypeMismatchException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ProblemDetail;
@@ -37,6 +38,15 @@ class TratamentoErros extends ResponseEntityExceptionHandler {
 	protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,
 			HttpHeaders headers, HttpStatusCode status, WebRequest request) {
 		var problema = ProblemDetail.forStatusAndDetail(status, "Não deu para entender os dados enviados. Confira e tente de novo.");
+		problema.setTitle("Dados inválidos");
+		return handleExceptionInternal(ex, problema, headers, status, request);
+	}
+
+	/** Parâmetro do endereço que não é do tipo esperado, como um mês 2026-13 ou um id que não é UUID. */
+	@Override
+	protected ResponseEntity<Object> handleTypeMismatch(TypeMismatchException ex, HttpHeaders headers,
+			HttpStatusCode status, WebRequest request) {
+		var problema = ProblemDetail.forStatusAndDetail(status, "Endereço inválido. Volte e tente de novo.");
 		problema.setTitle("Dados inválidos");
 		return handleExceptionInternal(ex, problema, headers, status, request);
 	}

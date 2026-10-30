@@ -1,6 +1,8 @@
 package br.com.contadinho.cartoes;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.UUID;
 
 import jakarta.persistence.Column;
@@ -78,6 +80,33 @@ class Cartao {
 
 	int getDiaVencimento() {
 		return diaVencimento;
+	}
+
+	/** Datas de uma fatura, identificada pelo mês de vencimento (RN-58). */
+	record Ciclo(YearMonth mes, LocalDate fechamento, LocalDate vencimento) {
+	}
+
+	/**
+	 * RN-58: vence no dia de vencimento do mês e fecha no dia de fechamento do mesmo mês, se ele vier antes;
+	 * senão, no mês anterior.
+	 */
+	Ciclo ciclo(YearMonth mes) {
+		var mesFechamento = diaFechamento < diaVencimento ? mes : mes.minusMonths(1);
+		return new Ciclo(mes, dia(mesFechamento, diaFechamento), dia(mes, diaVencimento));
+	}
+
+	/** RN-58: a primeira fatura cujo fechamento ainda não passou. */
+	YearMonth mesAberto(LocalDate hoje) {
+		var mes = YearMonth.from(hoje);
+		while (ciclo(mes).fechamento().isBefore(hoje)) {
+			mes = mes.plusMonths(1);
+		}
+		return mes;
+	}
+
+	/** RN-08: em mês mais curto vale o último dia. */
+	private static LocalDate dia(YearMonth mes, int dia) {
+		return mes.atDay(Math.min(dia, mes.lengthOfMonth()));
 	}
 
 }
