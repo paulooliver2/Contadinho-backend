@@ -10,8 +10,218 @@
   "security" : [ {
     "bearer" : [ ]
   } ],
-  "paths" : { },
+  "paths" : {
+    "/api/auth/sair" : {
+      "post" : {
+        "tags" : [ "autenticacao-controller" ],
+        "operationId" : "sair",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SessaoPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        },
+        "security" : [ ]
+      }
+    },
+    "/api/auth/renovar" : {
+      "post" : {
+        "tags" : [ "autenticacao-controller" ],
+        "operationId" : "renovar",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/SessaoPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Tokens"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ ]
+      }
+    },
+    "/api/auth/entrar" : {
+      "post" : {
+        "tags" : [ "autenticacao-controller" ],
+        "operationId" : "entrar",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EntrarPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Tokens"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ ]
+      }
+    },
+    "/api/auth/cadastro" : {
+      "post" : {
+        "tags" : [ "autenticacao-controller" ],
+        "operationId" : "cadastrar",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/CadastroPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Tokens"
+                }
+              }
+            }
+          }
+        },
+        "security" : [ ]
+      }
+    },
+    "/api/conta" : {
+      "get" : {
+        "tags" : [ "conta-controller" ],
+        "operationId" : "eu",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "*/*" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Conta"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   "components" : {
+    "schemas" : {
+      "SessaoPedido" : {
+        "type" : "object",
+        "properties" : {
+          "refreshToken" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "refreshToken" ]
+      },
+      "Tokens" : {
+        "type" : "object",
+        "properties" : {
+          "tokenAcesso" : {
+            "type" : "string"
+          },
+          "acessoExpiraEm" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "refreshToken" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "acessoExpiraEm", "refreshToken", "tokenAcesso" ]
+      },
+      "EntrarPedido" : {
+        "type" : "object",
+        "properties" : {
+          "email" : {
+            "type" : "string",
+            "minLength" : 1
+          },
+          "senha" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "email", "senha" ]
+      },
+      "CadastroPedido" : {
+        "type" : "object",
+        "properties" : {
+          "nome" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          },
+          "email" : {
+            "type" : "string",
+            "format" : "email",
+            "maxLength" : 254,
+            "minLength" : 0
+          },
+          "senha" : {
+            "type" : "string",
+            "maxLength" : 64,
+            "minLength" : 10,
+            "pattern" : "^(?=.*\\p{L})(?=.*\\d).*$"
+          }
+        },
+        "required" : [ "email", "nome", "senha" ]
+      },
+      "Conta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "nome" : {
+            "type" : "string"
+          },
+          "email" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "email", "id", "nome" ]
+      }
+    },
     "securitySchemes" : {
       "bearer" : {
         "type" : "http",
