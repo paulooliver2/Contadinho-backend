@@ -121,6 +121,43 @@
         }
       }
     },
+    "/api/lancamentos/{id}/responsavel" : {
+      "put" : {
+        "tags" : [ "faturas-controller" ],
+        "operationId" : "atribuir",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ResponsavelPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/AtribuicaoResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/pessoas" : {
       "get" : {
         "tags" : [ "pessoas-controller" ],
@@ -729,9 +766,38 @@
           "origem" : {
             "type" : "string",
             "enum" : [ "ARQUIVO", "MANUAL" ]
+          },
+          "pessoaId" : {
+            "type" : "string",
+            "format" : "uuid"
           }
         },
         "required" : [ "data", "descricao", "id", "origem", "valor" ]
+      },
+      "ResponsavelPedido" : {
+        "type" : "object",
+        "properties" : {
+          "pessoaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "proximas" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "AtribuicaoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "lancamento" : {
+            "$ref" : "#/components/schemas/LancamentoResposta"
+          },
+          "proximas" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "lancamento", "proximas" ]
       },
       "NovoCartaoPedido" : {
         "type" : "object",

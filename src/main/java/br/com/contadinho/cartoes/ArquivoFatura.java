@@ -36,9 +36,9 @@ record ArquivoFatura(String formato, String modelo, YearMonth mes, List<Item> it
 			Integer parcelaTotal, String finalCartao) {
 	}
 
-	private static final Pattern PARCELA_ESCRITA = Pattern.compile("(?i)parc(?:ela)?\\.?\\s*(\\d{1,2})\\s*(?:/|de)\\s*(\\d{1,2})");
+	static final Pattern PARCELA_ESCRITA = Pattern.compile("(?i)parc(?:ela)?\\.?\\s*(\\d{1,2})\\s*(?:/|de)\\s*(\\d{1,2})");
 
-	private static final Pattern PARCELA_NO_FIM = Pattern.compile("(?<!\\d)(\\d{1,2})/(\\d{1,2})\\s*$");
+	static final Pattern PARCELA_NO_FIM = Pattern.compile("(?<!\\d)(\\d{1,2})/(\\d{1,2})\\s*$");
 
 	/** "PARCELA 3/10", "(Parcela 03 de 10)" ou "LOJA X 03/10" no fim da descrição (RN-61). */
 	static int[] parcela(String descricao) {

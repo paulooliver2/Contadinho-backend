@@ -58,6 +58,9 @@ class Lancamento {
 	@Column(length = 4)
 	private String finalCartao;
 
+	/** Responsável pela compra; null é o dono (RN-15). */
+	private UUID pessoaId;
+
 	protected Lancamento() {
 	}
 
@@ -110,12 +113,29 @@ class Lancamento {
 		this.parcelaTotal = compra.parcelaTotal() == null ? null : compra.parcelaTotal().shortValue();
 	}
 
+	/** HU-08: de quem é a compra; null volta para o dono. */
+	void atribuir(UUID pessoaId) {
+		this.pessoaId = pessoaId;
+	}
+
 	/** O que o dono informa ao digitar uma compra (RN-60). */
 	record Compra(LocalDate data, String descricao, BigDecimal valor, Integer parcelaAtual, Integer parcelaTotal) {
 	}
 
 	UUID getId() {
 		return id;
+	}
+
+	UUID getUsuarioId() {
+		return usuarioId;
+	}
+
+	UUID getCartaoId() {
+		return cartaoId;
+	}
+
+	UUID getPessoaId() {
+		return pessoaId;
 	}
 
 	UUID getFaturaId() {

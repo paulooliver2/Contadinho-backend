@@ -20,4 +20,8 @@ interface LancamentoRepositorio extends JpaRepository<Lancamento, UUID> {
 	/** RN-59: candidatas a casar com as compras do arquivo. */
 	List<Lancamento> findByFaturaIdAndOrigemOrderByDataAscDescricao(UUID faturaId, Lancamento.Origem origem);
 
+	/** RN-17: candidatas a próximas parcelas da mesma compra. */
+	List<Lancamento> findByCartaoIdAndParcelaTotalAndParcelaAtualGreaterThan(UUID cartaoId, Short parcelaTotal,
+			Short parcelaAtual);
+
 }

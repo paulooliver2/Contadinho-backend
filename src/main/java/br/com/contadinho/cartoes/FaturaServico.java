@@ -37,12 +37,16 @@ class FaturaServico {
 
 	private final LancamentoRepositorio lancamentos;
 
+	private final ResponsavelServico responsaveis;
+
 	private final Clock clock;
 
-	FaturaServico(CartaoRepositorio cartoes, FaturaRepositorio faturas, LancamentoRepositorio lancamentos, Clock clock) {
+	FaturaServico(CartaoRepositorio cartoes, FaturaRepositorio faturas, LancamentoRepositorio lancamentos,
+			ResponsavelServico responsaveis, Clock clock) {
 		this.cartoes = cartoes;
 		this.faturas = faturas;
 		this.lancamentos = lancamentos;
+		this.responsaveis = responsaveis;
 		this.clock = clock;
 	}
 
@@ -64,7 +68,9 @@ class FaturaServico {
 	Lancamento adicionar(UUID usuarioId, UUID cartaoId, YearMonth mes, Lancamento.Compra compra) {
 		var fatura = gravarFatura(usuarioId, cartao(usuarioId, cartaoId), mes);
 		conferir(compra, fatura);
-		return lancamentos.save(Lancamento.digitado(usuarioId, cartaoId, fatura.getId(), compra));
+		var lancamento = Lancamento.digitado(usuarioId, cartaoId, fatura.getId(), compra);
+		responsaveis.aplicarRegra(lancamento);
+		return lancamentos.save(lancamento);
 	}
 
 	Lancamento corrigir(UUID usuarioId, UUID lancamentoId, Lancamento.Compra compra) {

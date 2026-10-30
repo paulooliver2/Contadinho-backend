@@ -34,13 +34,16 @@ class ImportacaoServico {
 
 	private final ImportacaoRepositorio importacoes;
 
+	private final ResponsavelServico responsaveis;
+
 	private final Clock clock;
 
 	ImportacaoServico(FaturaServico faturas, LancamentoRepositorio lancamentos, ImportacaoRepositorio importacoes,
-			Clock clock) {
+			ResponsavelServico responsaveis, Clock clock) {
 		this.faturas = faturas;
 		this.lancamentos = lancamentos;
 		this.importacoes = importacoes;
+		this.responsaveis = responsaveis;
 		this.clock = clock;
 	}
 
@@ -98,7 +101,10 @@ class ImportacaoServico {
 				casadas++;
 			}
 			else {
-				lancamentos.save(Lancamento.doArquivo(usuarioId, cartao.getId(), fatura.getId(), importacao.getId(), i.item()));
+				var novo = Lancamento.doArquivo(usuarioId, cartao.getId(), fatura.getId(), importacao.getId(), i.item());
+				// RN-17: a parcela chega com o responsável que o dono escolheu para as próximas.
+				responsaveis.aplicarRegra(novo);
+				lancamentos.save(novo);
 				novos++;
 			}
 		}

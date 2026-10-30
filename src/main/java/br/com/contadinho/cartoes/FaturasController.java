@@ -26,15 +26,19 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * A fatura de cada mês e as compras digitadas nela (HU-47). O mês é o do vencimento, como 2026-11 (RN-58).
+ * A fatura de cada mês, as compras digitadas nela (HU-47) e de quem é cada compra (HU-08). O mês é o do vencimento,
+ * como 2026-11 (RN-58).
  */
 @RestController
 class FaturasController {
 
 	private final FaturaServico servico;
 
-	FaturasController(FaturaServico servico) {
+	private final ResponsavelServico responsaveis;
+
+	FaturasController(FaturaServico servico, ResponsavelServico responsaveis) {
 		this.servico = servico;
+		this.responsaveis = responsaveis;
 	}
 
 	/** RN-60. Parcela é opcional, mas vem com o total (3 de 10). */
@@ -64,12 +68,25 @@ class FaturasController {
 			Integer parcelaTotal,
 			/** Final do cartão que fez a compra, quando o arquivo traz (RN-19). */
 			String finalCartao,
-			@NotNull Lancamento.Origem origem) {
+			@NotNull Lancamento.Origem origem,
+			/** De quem é a compra; sem pessoa, é do dono (RN-15). */
+			UUID pessoaId) {
 
 		static LancamentoResposta de(Lancamento l) {
 			return new LancamentoResposta(l.getId(), l.getData(), l.getDescricao(), l.getValor(), l.getParcelaAtual(),
-					l.getParcelaTotal(), l.getFinalCartao(), l.getOrigem());
+					l.getParcelaTotal(), l.getFinalCartao(), l.getOrigem(), l.getPessoaId());
 		}
+	}
+
+	/**
+	 * HU-08. Sem {@code pessoaId}, a compra volta para o dono. {@code proximas}: as próximas parcelas da mesma compra
+	 * também são dessa pessoa (RN-17).
+	 */
+	record ResponsavelPedido(UUID pessoaId, Boolean proximas) {
+	}
+
+	/** {@code proximas}: parcelas já gravadas em faturas seguintes que mudaram junto. */
+	record AtribuicaoResposta(@NotNull LancamentoResposta lancamento, @NotNull Integer proximas) {
 	}
 
 	record FaturaResposta(
@@ -100,6 +117,13 @@ class FaturasController {
 	LancamentoResposta corrigir(@UsuarioLogado UUID usuarioId, @PathVariable UUID id,
 			@Valid @RequestBody CompraPedido pedido) {
 		return LancamentoResposta.de(servico.corrigir(usuarioId, id, pedido.compra()));
+	}
+
+	@PutMapping("/api/lancamentos/{id}/responsavel")
+	AtribuicaoResposta atribuir(@UsuarioLogado UUID usuarioId, @PathVariable UUID id,
+			@RequestBody ResponsavelPedido pedido) {
+		var atribuicao = responsaveis.atribuir(usuarioId, id, pedido.pessoaId(), Boolean.TRUE.equals(pedido.proximas()));
+		return new AtribuicaoResposta(LancamentoResposta.de(atribuicao.lancamento()), atribuicao.proximas());
 	}
 
 	@DeleteMapping("/api/lancamentos/{id}")

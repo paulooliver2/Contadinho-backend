@@ -17,7 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
  * Cadastro (HU-16) e arquivamento (HU-42) das pessoas do dono.
  */
 @Service
-class PessoaServico {
+class PessoaServico implements Pessoas {
 
 	static final String PESSOA_NAO_ENCONTRADA = "Pessoa não encontrada.";
 
@@ -35,6 +35,12 @@ class PessoaServico {
 	}
 
 	record Dados(String nome, String apelido, String whatsapp) {
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean podeEscolher(UUID usuarioId, UUID pessoaId) {
+		return pessoas.findByIdAndUsuarioId(pessoaId, usuarioId).filter(p -> !p.isArquivada()).isPresent();
 	}
 
 	List<Pessoa> listar(UUID usuarioId, boolean arquivadas) {
