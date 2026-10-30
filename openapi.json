@@ -1176,6 +1176,12 @@
           "total" : {
             "type" : "number"
           },
+          "partes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ParteResposta"
+            }
+          },
           "lancamentos" : {
             "type" : "array",
             "items" : {
@@ -1183,7 +1189,24 @@
             }
           }
         },
-        "required" : [ "aberta", "fechamento", "lancamentos", "mes", "total", "vencimento" ]
+        "required" : [ "aberta", "fechamento", "lancamentos", "mes", "partes", "total", "vencimento" ]
+      },
+      "ParteResposta" : {
+        "type" : "object",
+        "properties" : {
+          "pessoaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "total" : {
+            "type" : "number"
+          },
+          "quantidade" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "quantidade", "total" ]
       },
       "BancoResposta" : {
         "type" : "object",

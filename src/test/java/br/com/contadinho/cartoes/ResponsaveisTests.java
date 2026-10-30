@@ -96,6 +96,27 @@ class ResponsaveisTests {
 	}
 
 	@Test
+	@SuppressWarnings("unchecked")
+	void faturaDivididaSomaOTotalComODonoPrimeiro() {
+		var ana = api.post("/api/pessoas", Map.of("nome", "Ana"), dono).texto("id");
+		digitar("2026-11", "Mercado", 100.1, null);
+		atribuir(digitar("2026-11", "Farmácia", 30.2, null), lucas, false);
+		atribuir(digitar("2026-11", "Loja", 250, null), ana, false);
+		atribuir(digitar("2026-11", "Estorno Loja", -50, null), ana, false);
+		atribuir(digitar("2026-11", "Padaria", 12.35, null), lucas, false);
+
+		var fatura = api.get("/api/cartoes/" + cartaoId + "/faturas/2026-11", dono).objeto();
+
+		assertThat(fatura.get("total")).isEqualTo(342.65);
+		var partes = (List<Map<String, Object>>) fatura.get("partes");
+		assertThat(partes).extracting(p -> p.get("pessoaId")).containsExactly(null, ana, lucas);
+		assertThat(partes).extracting(p -> p.get("total")).containsExactly(100.1, 200.0, 42.55);
+		assertThat(partes).extracting(p -> p.get("quantidade")).containsExactly(1, 2, 2);
+		assertThat(api.get("/api/cartoes/" + cartaoId + "/faturas/2026-12", dono).objeto().get("partes"))
+			.isEqualTo(List.of());
+	}
+
+	@Test
 	void pessoaArquivadaNaoPodeSerEscolhidaMasACompraDelaContinua() {
 		var antes = digitar("2026-11", "Mercado", 120.5, null);
 		var depois = digitar("2026-11", "Farmácia", 30, null);

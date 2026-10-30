@@ -5,6 +5,8 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Optional;
@@ -51,7 +53,11 @@ class FaturaServico {
 	}
 
 	/** Uma fatura como o app mostra; sem lançamentos, as datas vêm do cálculo da RN-58. */
-	record Vista(Cartao.Ciclo ciclo, boolean aberta, BigDecimal total, List<Lancamento> lancamentos) {
+	record Vista(Cartao.Ciclo ciclo, boolean aberta, BigDecimal total, List<Parte> partes, List<Lancamento> lancamentos) {
+	}
+
+	/** HU-10: quanto da fatura é de cada responsável; {@code pessoaId} null é o dono (RN-15). */
+	record Parte(UUID pessoaId, BigDecimal total, int quantidade) {
 	}
 
 	@Transactional(readOnly = true)
@@ -61,8 +67,24 @@ class FaturaServico {
 		return gravada(cartaoId, mes).map(fatura -> {
 			var itens = lancamentos.findByFaturaIdOrderByDataDescDescricao(fatura.getId());
 			var total = itens.stream().map(Lancamento::getValor).reduce(BigDecimal.ZERO, BigDecimal::add);
-			return new Vista(new Cartao.Ciclo(mes, fatura.getFechamento(), fatura.getVencimento()), aberta, total, itens);
-		}).orElseGet(() -> new Vista(cartao.ciclo(mes), aberta, BigDecimal.ZERO, List.of()));
+			return new Vista(new Cartao.Ciclo(mes, fatura.getFechamento(), fatura.getVencimento()), aberta, total,
+					partes(itens), itens);
+		}).orElseGet(() -> new Vista(cartao.ciclo(mes), aberta, BigDecimal.ZERO, List.of(), List.of()));
+	}
+
+	/**
+	 * HU-10: cada compra está em exatamente uma parte, então a soma das partes é o total. O dono vem primeiro;
+	 * as pessoas, da maior parte para a menor.
+	 */
+	private static List<Parte> partes(List<Lancamento> itens) {
+		var porResponsavel = new HashMap<Optional<UUID>, Parte>();
+		for (var l : itens) {
+			porResponsavel.merge(Optional.ofNullable(l.getPessoaId()), new Parte(l.getPessoaId(), l.getValor(), 1),
+					(a, b) -> new Parte(a.pessoaId(), a.total().add(b.total()), a.quantidade() + b.quantidade()));
+		}
+		return porResponsavel.values().stream()
+			.sorted(Comparator.comparing((Parte p) -> p.pessoaId() != null).thenComparing(Parte::total, Comparator.reverseOrder()))
+			.toList();
 	}
 
 	Lancamento adicionar(UUID usuarioId, UUID cartaoId, YearMonth mes, Lancamento.Compra compra) {

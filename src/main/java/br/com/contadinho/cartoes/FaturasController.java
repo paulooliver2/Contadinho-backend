@@ -95,7 +95,13 @@ class FaturasController {
 			@NotNull LocalDate vencimento,
 			@NotNull Boolean aberta,
 			@NotNull BigDecimal total,
+			/** HU-10: a soma das partes é sempre o total. */
+			@NotNull List<ParteResposta> partes,
 			@NotNull List<LancamentoResposta> lancamentos) {
+	}
+
+	/** Sem {@code pessoaId}, é a parte do dono (RN-15). */
+	record ParteResposta(UUID pessoaId, @NotNull BigDecimal total, @NotNull Integer quantidade) {
 	}
 
 	@GetMapping("/api/cartoes/{cartaoId}/faturas/{mes}")
@@ -103,7 +109,9 @@ class FaturasController {
 		var vista = servico.ver(usuarioId, cartaoId, mes);
 		var ciclo = vista.ciclo();
 		return new FaturaResposta(ciclo.mes().toString(), ciclo.fechamento(), ciclo.vencimento(), vista.aberta(),
-				vista.total(), vista.lancamentos().stream().map(LancamentoResposta::de).toList());
+				vista.total(),
+				vista.partes().stream().map(p -> new ParteResposta(p.pessoaId(), p.total(), p.quantidade())).toList(),
+				vista.lancamentos().stream().map(LancamentoResposta::de).toList());
 	}
 
 	@PostMapping("/api/cartoes/{cartaoId}/faturas/{mes}/lancamentos")
