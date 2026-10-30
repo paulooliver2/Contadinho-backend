@@ -12,7 +12,7 @@ jobs:
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: '21'
+          java-version: '25'
           cache: maven
       # Testes de integração usam Testcontainers (Postgres real); o runner já tem Docker.
       - run: ./mvnw -B verify
