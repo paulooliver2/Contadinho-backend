@@ -17,8 +17,10 @@ import java.util.stream.Stream;
 import br.com.contadinho.cartoes.Compras;
 import br.com.contadinho.comum.ErroApi;
 import br.com.contadinho.pessoas.Pessoas;
+import br.com.contadinho.receber.domain.Emprestimo;
 import br.com.contadinho.receber.domain.Pagamento;
 import br.com.contadinho.receber.domain.Recebivel;
+import br.com.contadinho.receber.repository.EmprestimoRepositorio;
 import br.com.contadinho.receber.repository.PagamentoRepositorio;
 import br.com.contadinho.receber.repository.RecebivelRepositorio;
 
@@ -27,7 +29,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Quanto cada pessoa deve (HU-18) e o que ela já devolveu (HU-19). Nada é guardado: tudo sai dos recebíveis e dos
+ * Quanto cada pessoa deve, de compras e empréstimos (HU-18), e o que ela já devolveu (HU-19). Nada é guardado: tudo sai dos recebíveis e dos
  * pagamentos não desfeitos (RN-39).
  */
 @Service
@@ -48,16 +50,19 @@ public class ReceberServico {
 
 	private final PagamentoRepositorio pagamentos;
 
+	private final EmprestimoRepositorio emprestimos;
+
 	private final Compras compras;
 
 	private final Pessoas pessoas;
 
 	private final Clock clock;
 
-	public ReceberServico(RecebivelRepositorio recebiveis, PagamentoRepositorio pagamentos, Compras compras,
-			Pessoas pessoas, Clock clock) {
+	public ReceberServico(RecebivelRepositorio recebiveis, PagamentoRepositorio pagamentos,
+			EmprestimoRepositorio emprestimos, Compras compras, Pessoas pessoas, Clock clock) {
 		this.recebiveis = recebiveis;
 		this.pagamentos = pagamentos;
+		this.emprestimos = emprestimos;
 		this.compras = compras;
 		this.pessoas = pessoas;
 		this.clock = clock;
@@ -82,7 +87,15 @@ public class ReceberServico {
 	public record CompraDaPessoa(Compras.Compra compra, BigDecimal emAberto) {
 	}
 
-	public record Historico(Situacao situacao, List<CompraDaPessoa> compras, List<Pagamento> pagamentos) {
+	/** Uma parcela do empréstimo; {@code emAberto} como em {@link CompraDaPessoa}. */
+	public record ParcelaDaPessoa(short numero, BigDecimal valor, LocalDate vencimento, BigDecimal emAberto) {
+	}
+
+	public record EmprestimoDaPessoa(Emprestimo emprestimo, List<ParcelaDaPessoa> parcelas) {
+	}
+
+	public record Historico(Situacao situacao, List<CompraDaPessoa> compras, List<EmprestimoDaPessoa> emprestimos,
+			List<Pagamento> pagamentos) {
 	}
 
 	/** Só quem tem recebíveis ou pagamentos; da que vence primeiro para a última, e as sem vencimento no fim (HU-18). */
@@ -104,7 +117,10 @@ public class ReceberServico {
 		return new Resumo(aReceber, recebido, situacoes);
 	}
 
-	/** HU-18.3: as compras atribuídas, da fatura mais recente para a mais antiga, e os pagamentos, do mais recente. */
+	/**
+	 * HU-18.3: as compras atribuídas, da fatura mais recente para a mais antiga; os empréstimos e os pagamentos, do
+	 * mais recente.
+	 */
 	public Historico historico(UUID usuarioId, UUID pessoaId) {
 		existe(usuarioId, pessoaId);
 		var daPessoa = recebiveis.findByUsuarioIdAndPessoaId(usuarioId, pessoaId);
@@ -116,7 +132,15 @@ public class ReceberServico {
 			.sorted(Comparator.comparing(Compras.Compra::fatura).thenComparing(Compras.Compra::data).reversed())
 			.map(c -> new CompraDaPessoa(c, aberto.get(porLancamento.get(c.id()).getId())))
 			.toList();
-		return new Historico(situacao(pessoaId, daPessoa, pagos), lista, pagos);
+		var parcelas = daPessoa.stream().filter(r -> r.getEmprestimoId() != null)
+			.sorted(Comparator.comparing(Recebivel::getParcela))
+			.collect(Collectors.groupingBy(Recebivel::getEmprestimoId));
+		var deEmprestimos = emprestimos.findByUsuarioIdAndPessoaIdOrderByCriadoEmDesc(usuarioId, pessoaId).stream()
+			.map(e -> new EmprestimoDaPessoa(e, parcelas.getOrDefault(e.getId(), List.of()).stream()
+				.map(r -> new ParcelaDaPessoa(r.getParcela(), r.getValor(), r.getVencimento(), aberto.get(r.getId())))
+				.toList()))
+			.toList();
+		return new Historico(situacao(pessoaId, daPessoa, pagos), lista, deEmprestimos, pagos);
 	}
 
 	/** HU-19.1 e RN-30: parcial ou o saldo inteiro, nunca mais que ele (HU-19.4). */

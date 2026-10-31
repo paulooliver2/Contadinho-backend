@@ -87,9 +87,34 @@ public class ReceberController {
 		}
 	}
 
+	public record ParcelaEmprestimoResposta(
+			@NotNull Integer numero,
+			@NotNull BigDecimal valor,
+			/** Null é "Sem data" (RN-32). */
+			LocalDate vencimento,
+			/** O que falta da parcela depois do abatimento (RN-30); zero é paga. */
+			@NotNull BigDecimal emAberto) {
+	}
+
+	public record EmprestimoHistoricoResposta(
+			@NotNull UUID id,
+			String descricao,
+			@NotNull BigDecimal valor,
+			@NotNull List<ParcelaEmprestimoResposta> parcelas) {
+
+		public static EmprestimoHistoricoResposta de(ReceberServico.EmprestimoDaPessoa d) {
+			var e = d.emprestimo();
+			return new EmprestimoHistoricoResposta(e.getId(), e.getDescricao(), e.getValor(), d.parcelas().stream()
+				.map(p -> new ParcelaEmprestimoResposta((int) p.numero(), p.valor(), p.vencimento(), p.emAberto()))
+				.toList());
+		}
+	}
+
 	public record HistoricoResposta(
 			@NotNull SituacaoResposta situacao,
 			@NotNull List<CompraResposta> compras,
+			/** Do mais recente para o mais antigo (HU-17). */
+			@NotNull List<EmprestimoHistoricoResposta> emprestimos,
 			/** Os não desfeitos, do mais recente para o mais antigo. */
 			@NotNull List<PagamentoResposta> pagamentos) {
 	}
@@ -114,6 +139,7 @@ public class ReceberController {
 		var historico = servico.historico(usuarioId, pessoaId);
 		return new HistoricoResposta(SituacaoResposta.de(historico.situacao()),
 				historico.compras().stream().map(CompraResposta::de).toList(),
+				historico.emprestimos().stream().map(EmprestimoHistoricoResposta::de).toList(),
 				historico.pagamentos().stream().map(PagamentoResposta::de).toList());
 	}
 

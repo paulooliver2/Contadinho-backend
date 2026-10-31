@@ -8,8 +8,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 
 /**
- * Um valor que uma pessoa deve ao dono: uma compra da fatura atribuída a ela (RN-16) ou, depois, uma parcela de
- * empréstimo (RN-31).
+ * Um valor que uma pessoa deve ao dono: uma compra da fatura atribuída a ela (RN-16) ou uma parcela de empréstimo
+ * (RN-31).
  */
 @Entity
 public class Recebivel {
@@ -45,6 +45,19 @@ public class Recebivel {
 		return r;
 	}
 
+	/** RN-31: a parcela fica com a pessoa do empréstimo; excluir o empréstimo apaga a parcela. */
+	public static Recebivel daParcela(Emprestimo emprestimo, Emprestimo.Parcela parcela) {
+		var r = new Recebivel();
+		r.id = UUID.randomUUID();
+		r.usuarioId = emprestimo.getUsuarioId();
+		r.pessoaId = emprestimo.getPessoaId();
+		r.emprestimoId = emprestimo.getId();
+		r.parcela = parcela.numero();
+		r.valor = parcela.valor();
+		r.vencimento = parcela.vencimento();
+		return r;
+	}
+
 	/** RN-16: trocar o responsável move o recebível; o valor e o vencimento seguem a compra. */
 	public void acompanhar(UUID pessoaId, BigDecimal valor, LocalDate vencimento) {
 		this.pessoaId = pessoaId;
@@ -62,6 +75,14 @@ public class Recebivel {
 
 	public UUID getLancamentoId() {
 		return lancamentoId;
+	}
+
+	public UUID getEmprestimoId() {
+		return emprestimoId;
+	}
+
+	public Short getParcela() {
+		return parcela;
 	}
 
 	public BigDecimal getValor() {

@@ -195,6 +195,34 @@
         }
       }
     },
+    "/api/receber/emprestimos" : {
+      "post" : {
+        "tags" : [ "emprestimos-controller" ],
+        "operationId" : "registrar_1",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EmprestimoPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/EmprestimoResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/pessoas" : {
       "get" : {
         "tags" : [ "pessoas-controller" ],
@@ -760,6 +788,26 @@
           }
         }
       }
+    },
+    "/api/receber/emprestimos/{id}" : {
+      "delete" : {
+        "tags" : [ "emprestimos-controller" ],
+        "operationId" : "excluir_2",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
     }
   },
   "components" : {
@@ -931,6 +979,76 @@
           }
         },
         "required" : [ "id", "recebidoEm", "valor" ]
+      },
+      "EmprestimoPedido" : {
+        "type" : "object",
+        "properties" : {
+          "pessoaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "descricao" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          },
+          "valor" : {
+            "type" : "number",
+            "minimum" : 0.01
+          },
+          "parcelas" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "primeiraDevolucao" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        },
+        "required" : [ "parcelas", "pessoaId", "valor" ]
+      },
+      "EmprestimoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "pessoaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "descricao" : {
+            "type" : "string"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "parcelas" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ParcelaResposta"
+            }
+          }
+        },
+        "required" : [ "id", "parcelas", "pessoaId", "valor" ]
+      },
+      "ParcelaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "numero" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "vencimento" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        },
+        "required" : [ "numero", "valor" ]
       },
       "NovoCartaoPedido" : {
         "type" : "object",
@@ -1355,6 +1473,28 @@
         },
         "required" : [ "cartao", "data", "descricao", "emAberto", "fatura", "lancamentoId", "valor" ]
       },
+      "EmprestimoHistoricoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "descricao" : {
+            "type" : "string"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "parcelas" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ParcelaEmprestimoResposta"
+            }
+          }
+        },
+        "required" : [ "id", "parcelas", "valor" ]
+      },
       "HistoricoResposta" : {
         "type" : "object",
         "properties" : {
@@ -1367,6 +1507,12 @@
               "$ref" : "#/components/schemas/CompraResposta"
             }
           },
+          "emprestimos" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/EmprestimoHistoricoResposta"
+            }
+          },
           "pagamentos" : {
             "type" : "array",
             "items" : {
@@ -1374,7 +1520,27 @@
             }
           }
         },
-        "required" : [ "compras", "pagamentos", "situacao" ]
+        "required" : [ "compras", "emprestimos", "pagamentos", "situacao" ]
+      },
+      "ParcelaEmprestimoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "numero" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "vencimento" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "emAberto" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "emAberto", "numero", "valor" ]
       },
       "Conta" : {
         "type" : "object",
