@@ -586,6 +586,51 @@
         "security" : [ ]
       }
     },
+    "/api/receber" : {
+      "get" : {
+        "tags" : [ "receber-controller" ],
+        "operationId" : "resumo",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ResumoResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/receber/pessoas/{pessoaId}" : {
+      "get" : {
+        "tags" : [ "receber-controller" ],
+        "operationId" : "historico",
+        "parameters" : [ {
+          "name" : "pessoaId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/HistoricoResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/conta" : {
       "get" : {
         "tags" : [ "conta-controller" ],
@@ -1139,6 +1184,100 @@
           }
         },
         "required" : [ "email", "nome", "senha" ]
+      },
+      "ResumoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "aReceber" : {
+            "type" : "number"
+          },
+          "recebido" : {
+            "type" : "number"
+          },
+          "pessoas" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/SituacaoResposta"
+            }
+          }
+        },
+        "required" : [ "aReceber", "pessoas", "recebido" ]
+      },
+      "SituacaoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "pessoaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "saldo" : {
+            "type" : "number"
+          },
+          "original" : {
+            "type" : "number"
+          },
+          "recebido" : {
+            "type" : "number"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "PENDENTE", "PAGOU_PARTE", "PAGO" ]
+          },
+          "proximoVencimento" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        },
+        "required" : [ "original", "pessoaId", "recebido", "saldo", "status" ]
+      },
+      "CompraResposta" : {
+        "type" : "object",
+        "properties" : {
+          "lancamentoId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "data" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "descricao" : {
+            "type" : "string"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "parcelaAtual" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "parcelaTotal" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "cartao" : {
+            "type" : "string"
+          },
+          "fatura" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "cartao", "data", "descricao", "fatura", "lancamentoId", "valor" ]
+      },
+      "HistoricoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "situacao" : {
+            "$ref" : "#/components/schemas/SituacaoResposta"
+          },
+          "compras" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/CompraResposta"
+            }
+          }
+        },
+        "required" : [ "compras", "situacao" ]
       },
       "Conta" : {
         "type" : "object",

@@ -90,15 +90,14 @@ class FaturaServico {
 	Lancamento adicionar(UUID usuarioId, UUID cartaoId, YearMonth mes, Lancamento.Compra compra) {
 		var fatura = gravarFatura(usuarioId, cartao(usuarioId, cartaoId), mes);
 		conferir(compra, fatura);
-		var lancamento = Lancamento.digitado(usuarioId, cartaoId, fatura.getId(), compra);
-		responsaveis.aplicarRegra(lancamento);
-		return lancamentos.save(lancamento);
+		return responsaveis.gravarNova(Lancamento.digitado(usuarioId, cartaoId, fatura.getId(), compra));
 	}
 
 	Lancamento corrigir(UUID usuarioId, UUID lancamentoId, Lancamento.Compra compra) {
 		var lancamento = digitado(usuarioId, lancamentoId);
 		conferir(compra, faturas.getReferenceById(lancamento.getFaturaId()));
 		lancamento.corrigir(compra);
+		responsaveis.valorMudou(lancamento);
 		return lancamento;
 	}
 

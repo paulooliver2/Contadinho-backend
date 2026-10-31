@@ -14,6 +14,8 @@ interface LancamentoRepositorio extends JpaRepository<Lancamento, UUID> {
 
 	Optional<Lancamento> findByIdAndUsuarioId(UUID id, UUID usuarioId);
 
+	List<Lancamento> findByUsuarioIdAndIdIn(UUID usuarioId, Collection<UUID> ids);
+
 	/** RN-11: os que já vieram de um arquivo deste cartão. */
 	List<Lancamento> findByCartaoIdAndIdExternoIn(UUID cartaoId, Collection<String> idsExternos);
 

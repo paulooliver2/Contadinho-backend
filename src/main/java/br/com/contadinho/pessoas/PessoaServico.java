@@ -3,6 +3,7 @@ package br.com.contadinho.pessoas;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -27,10 +28,13 @@ class PessoaServico implements Pessoas {
 
 	private final PessoaRepositorio pessoas;
 
+	private final SaldoDaPessoa saldos;
+
 	private final Clock clock;
 
-	PessoaServico(PessoaRepositorio pessoas, Clock clock) {
+	PessoaServico(PessoaRepositorio pessoas, SaldoDaPessoa saldos, Clock clock) {
 		this.pessoas = pessoas;
+		this.saldos = saldos;
 		this.clock = clock;
 	}
 
@@ -41,6 +45,12 @@ class PessoaServico implements Pessoas {
 	@Transactional(readOnly = true)
 	public boolean podeEscolher(UUID usuarioId, UUID pessoaId) {
 		return pessoas.findByIdAndUsuarioId(pessoaId, usuarioId).filter(p -> !p.isArquivada()).isPresent();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public boolean existe(UUID usuarioId, UUID pessoaId) {
+		return pessoas.findByIdAndUsuarioId(pessoaId, usuarioId).isPresent();
 	}
 
 	List<Pessoa> listar(UUID usuarioId, boolean arquivadas) {
@@ -61,10 +71,16 @@ class PessoaServico implements Pessoas {
 		return pessoa;
 	}
 
-	/** RN-36. Enquanto não há recebíveis, toda pessoa tem saldo zero e pode ser arquivada. */
+	/** RN-36: só com saldo zero; senão, 409 com o saldo pendente (HU-42). */
 	@Transactional
 	Pessoa arquivar(UUID usuarioId, UUID id) {
 		var pessoa = pessoa(usuarioId, id);
+		var saldo = saldos.saldo(usuarioId, id);
+		if (saldo.signum() != 0) {
+			throw new ErroApi(HttpStatus.CONFLICT, pessoa.getNome() + " tem saldo de "
+					+ String.format(Locale.forLanguageTag("pt-BR"), "R$ %,.2f", saldo)
+					+ " a receber. Só dá para arquivar com o saldo zerado.");
+		}
 		pessoa.arquivar(Instant.now(clock));
 		return pessoa;
 	}

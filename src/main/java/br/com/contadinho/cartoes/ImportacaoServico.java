@@ -101,10 +101,8 @@ class ImportacaoServico {
 				casadas++;
 			}
 			else {
-				var novo = Lancamento.doArquivo(usuarioId, cartao.getId(), fatura.getId(), importacao.getId(), i.item());
 				// RN-17: a parcela chega com o responsável que o dono escolheu para as próximas.
-				responsaveis.aplicarRegra(novo);
-				lancamentos.save(novo);
+				responsaveis.gravarNova(Lancamento.doArquivo(usuarioId, cartao.getId(), fatura.getId(), importacao.getId(), i.item()));
 				novos++;
 			}
 		}

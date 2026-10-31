@@ -119,9 +119,12 @@ class ResponsaveisTests {
 	@Test
 	void pessoaArquivadaNaoPodeSerEscolhidaMasACompraDelaContinua() {
 		var antes = digitar("2026-11", "Mercado", 120.5, null);
+		var estorno = digitar("2026-11", "Estorno Mercado", -120.5, null);
 		var depois = digitar("2026-11", "Farmácia", 30, null);
 		atribuir(antes, lucas, false);
-		api.post("/api/pessoas/" + lucas + "/arquivar", null, dono);
+		atribuir(estorno, lucas, false);
+		// Compra e estorno se anulam: saldo zero, então pode arquivar (RN-36).
+		assertThat(api.post("/api/pessoas/" + lucas + "/arquivar", null, dono).status()).isEqualTo(200);
 
 		var recusada = atribuir(depois, lucas, false);
 
