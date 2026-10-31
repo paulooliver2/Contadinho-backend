@@ -52,6 +52,10 @@ public class Recebivel {
 		this.vencimento = vencimento;
 	}
 
+	public UUID getId() {
+		return id;
+	}
+
 	public UUID getPessoaId() {
 		return pessoaId;
 	}

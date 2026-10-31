@@ -5,18 +5,26 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
-import br.com.contadinho.cartoes.Compras;
 import br.com.contadinho.comum.UsuarioLogado;
+import br.com.contadinho.receber.domain.Pagamento;
 import br.com.contadinho.receber.service.ReceberServico;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.NotNull;
 
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * A receber: quanto cada pessoa deve e o histórico dela (HU-18).
+ * A receber: quanto cada pessoa deve, o histórico dela (HU-18) e os pagamentos recebidos (HU-19).
  */
 @RestController
 @RequestMapping("/api/receber")
@@ -61,15 +69,37 @@ public class ReceberController {
 			/** Apelido e final, como "Itaú •• 3310". */
 			@NotNull String cartao,
 			/** Mês de vencimento da fatura, como 2026-11. */
-			@NotNull String fatura) {
+			@NotNull String fatura,
+			/** O que falta depois de abater os pagamentos, do que vence primeiro (RN-30); zero é paga. */
+			@NotNull BigDecimal emAberto) {
 
-		public static CompraResposta de(Compras.Compra c) {
+		public static CompraResposta de(ReceberServico.CompraDaPessoa d) {
+			var c = d.compra();
 			return new CompraResposta(c.id(), c.data(), c.descricao(), c.valor(), c.parcelaAtual(), c.parcelaTotal(),
-					c.cartao(), c.fatura().toString());
+					c.cartao(), c.fatura().toString(), d.emAberto());
 		}
 	}
 
-	public record HistoricoResposta(@NotNull SituacaoResposta situacao, @NotNull List<CompraResposta> compras) {
+	public record PagamentoResposta(@NotNull UUID id, @NotNull BigDecimal valor, @NotNull LocalDate recebidoEm) {
+
+		public static PagamentoResposta de(Pagamento p) {
+			return new PagamentoResposta(p.getId(), p.getValor(), p.getRecebidoEm());
+		}
+	}
+
+	public record HistoricoResposta(
+			@NotNull SituacaoResposta situacao,
+			@NotNull List<CompraResposta> compras,
+			/** Os não desfeitos, do mais recente para o mais antigo. */
+			@NotNull List<PagamentoResposta> pagamentos) {
+	}
+
+	/** HU-19.1. Sem data, vale hoje. */
+	public record PagamentoPedido(
+			@NotNull(message = "Informe o valor.")
+			@DecimalMin(value = "0.01", message = "Informe um valor maior que zero.")
+			@Digits(integer = 10, fraction = 2, message = "Use no máximo 2 casas decimais.") BigDecimal valor,
+			LocalDate recebidoEm) {
 	}
 
 	@GetMapping
@@ -83,7 +113,23 @@ public class ReceberController {
 	public HistoricoResposta historico(@UsuarioLogado UUID usuarioId, @PathVariable UUID pessoaId) {
 		var historico = servico.historico(usuarioId, pessoaId);
 		return new HistoricoResposta(SituacaoResposta.de(historico.situacao()),
-				historico.compras().stream().map(CompraResposta::de).toList());
+				historico.compras().stream().map(CompraResposta::de).toList(),
+				historico.pagamentos().stream().map(PagamentoResposta::de).toList());
+	}
+
+	/** Maior que o saldo é 400 no campo valor (HU-19.4); sem saldo é 409. */
+	@PostMapping("/pessoas/{pessoaId}/pagamentos")
+	@ResponseStatus(HttpStatus.CREATED)
+	public PagamentoResposta registrar(@UsuarioLogado UUID usuarioId, @PathVariable UUID pessoaId,
+			@Valid @RequestBody PagamentoPedido pedido) {
+		return PagamentoResposta.de(servico.registrar(usuarioId, pessoaId, pedido.valor(), pedido.recebidoEm()));
+	}
+
+	/** HU-19.3. */
+	@DeleteMapping("/pagamentos/{id}")
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void desfazer(@UsuarioLogado UUID usuarioId, @PathVariable UUID id) {
+		servico.desfazer(usuarioId, id);
 	}
 
 }

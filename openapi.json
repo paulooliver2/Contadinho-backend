@@ -158,6 +158,43 @@
         }
       }
     },
+    "/api/receber/pessoas/{pessoaId}/pagamentos" : {
+      "post" : {
+        "tags" : [ "receber-controller" ],
+        "operationId" : "registrar",
+        "parameters" : [ {
+          "name" : "pessoaId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PagamentoPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PagamentoResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/pessoas" : {
       "get" : {
         "tags" : [ "pessoas-controller" ],
@@ -703,6 +740,26 @@
           }
         }
       }
+    },
+    "/api/receber/pagamentos/{id}" : {
+      "delete" : {
+        "tags" : [ "receber-controller" ],
+        "operationId" : "desfazer",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
     }
   },
   "components" : {
@@ -843,6 +900,37 @@
           }
         },
         "required" : [ "lancamento", "proximas" ]
+      },
+      "PagamentoPedido" : {
+        "type" : "object",
+        "properties" : {
+          "valor" : {
+            "type" : "number",
+            "minimum" : 0.01
+          },
+          "recebidoEm" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        },
+        "required" : [ "valor" ]
+      },
+      "PagamentoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "recebidoEm" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        },
+        "required" : [ "id", "recebidoEm", "valor" ]
       },
       "NovoCartaoPedido" : {
         "type" : "object",
@@ -1260,9 +1348,12 @@
           },
           "fatura" : {
             "type" : "string"
+          },
+          "emAberto" : {
+            "type" : "number"
           }
         },
-        "required" : [ "cartao", "data", "descricao", "fatura", "lancamentoId", "valor" ]
+        "required" : [ "cartao", "data", "descricao", "emAberto", "fatura", "lancamentoId", "valor" ]
       },
       "HistoricoResposta" : {
         "type" : "object",
@@ -1275,9 +1366,15 @@
             "items" : {
               "$ref" : "#/components/schemas/CompraResposta"
             }
+          },
+          "pagamentos" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PagamentoResposta"
+            }
           }
         },
-        "required" : [ "compras", "situacao" ]
+        "required" : [ "compras", "pagamentos", "situacao" ]
       },
       "Conta" : {
         "type" : "object",
