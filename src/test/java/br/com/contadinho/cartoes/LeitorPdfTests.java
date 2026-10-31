@@ -8,6 +8,10 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
 
+import br.com.contadinho.cartoes.importacao.ArquivoFatura;
+import br.com.contadinho.cartoes.importacao.ArquivoInvalido;
+import br.com.contadinho.cartoes.importacao.LeitorFatura;
+import br.com.contadinho.cartoes.importacao.LeitorPdf;
 import org.junit.jupiter.api.Test;
 
 /**

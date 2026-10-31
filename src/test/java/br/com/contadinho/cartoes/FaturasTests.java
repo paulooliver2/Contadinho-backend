@@ -11,6 +11,7 @@ import java.util.UUID;
 
 import br.com.contadinho.ClienteTeste;
 import br.com.contadinho.TestcontainersConfiguration;
+import br.com.contadinho.cartoes.service.FaturaServico;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

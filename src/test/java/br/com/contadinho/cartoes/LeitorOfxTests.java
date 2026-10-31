@@ -7,6 +7,8 @@ import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 
+import br.com.contadinho.cartoes.importacao.ArquivoFatura;
+import br.com.contadinho.cartoes.importacao.LeitorOfx;
 import org.junit.jupiter.api.Test;
 
 /**

@@ -10,6 +10,9 @@ import java.util.UUID;
 
 import br.com.contadinho.ClienteTeste;
 import br.com.contadinho.TestcontainersConfiguration;
+import br.com.contadinho.cartoes.importacao.LeitorOfx;
+import br.com.contadinho.cartoes.importacao.LeitorPdf;
+import br.com.contadinho.cartoes.service.ImportacaoServico;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

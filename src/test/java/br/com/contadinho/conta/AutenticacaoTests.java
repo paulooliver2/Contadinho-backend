@@ -10,6 +10,7 @@ import java.util.Map;
 
 import br.com.contadinho.ClienteTeste;
 import br.com.contadinho.TestcontainersConfiguration;
+import br.com.contadinho.conta.service.EmissorTokens;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

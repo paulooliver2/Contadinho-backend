@@ -7,6 +7,8 @@ import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.UUID;
 
+import br.com.contadinho.cartoes.domain.Banco;
+import br.com.contadinho.cartoes.domain.Cartao;
 import org.junit.jupiter.api.Test;
 
 /**
