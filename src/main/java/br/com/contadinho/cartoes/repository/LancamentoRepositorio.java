@@ -1,5 +1,7 @@
 package br.com.contadinho.cartoes.repository;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -17,6 +19,9 @@ public interface LancamentoRepositorio extends JpaRepository<Lancamento, UUID> {
 	Optional<Lancamento> findByIdAndUsuarioId(UUID id, UUID usuarioId);
 
 	List<Lancamento> findByUsuarioIdAndIdIn(UUID usuarioId, Collection<UUID> ids);
+
+	List<Lancamento> findByUsuarioIdAndCartaoIdAndDataBetweenAndValorGreaterThan(UUID usuarioId, UUID cartaoId,
+			LocalDate de, LocalDate ate, BigDecimal valor);
 
 	/** RN-11: os que já vieram de um arquivo deste cartão. */
 	List<Lancamento> findByCartaoIdAndIdExternoIn(UUID cartaoId, Collection<String> idsExternos);

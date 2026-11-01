@@ -4,16 +4,21 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import br.com.contadinho.cartoes.Cartoes;
+import br.com.contadinho.cartoes.Compras;
 import br.com.contadinho.categorias.Categorias;
 import br.com.contadinho.comum.ErroApi;
 import br.com.contadinho.gastos.domain.ContaFixa;
@@ -29,7 +34,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Contas fixas (HU-11): cadastro, mudança de valor do mês atual em diante e encerramento (RN-21), e a ocorrência de
- * cada mês, criada na primeira vez que o mês é aberto. Marcar como paga e desfazer (HU-13).
+ * cada mês, criada na primeira vez que o mês é aberto. Marcar como paga e desfazer (HU-13). Conta paga no cartão
+ * é ligada ao lançamento da fatura (HU-14).
  */
 @Service
 public class ContaFixaServico {
@@ -48,6 +54,20 @@ public class ContaFixaServico {
 
 	public static final String DATA_FUTURA = "A data não pode ser depois de hoje.";
 
+	public static final String SO_NO_CARTAO = "Só conta paga no cartão se liga à fatura.";
+
+	public static final String COMPRA_DE_OUTRO_CARTAO = "Escolha uma compra do cartão desta conta.";
+
+	public static final String COMPRA_JA_LIGADA = "Essa compra já paga outra conta fixa.";
+
+	/** RN-23: a compra cai em até 5 dias do vencimento, com até R$ 1 de diferença. */
+	static final int DIAS_DO_VENCIMENTO = 5;
+
+	static final BigDecimal DIFERENCA_DE_VALOR = BigDecimal.ONE;
+
+	/** HU-14.2: ao ligar à mão, as compras do cartão até um mês antes ou depois do vencimento. */
+	static final int DIAS_DE_BUSCA = 31;
+
 	private final ContaFixaRepositorio contas;
 
 	private final ContaFixaValorRepositorio valores;
@@ -58,15 +78,18 @@ public class ContaFixaServico {
 
 	private final Cartoes cartoes;
 
+	private final Compras compras;
+
 	private final Clock clock;
 
 	public ContaFixaServico(ContaFixaRepositorio contas, ContaFixaValorRepositorio valores,
-			OcorrenciaContaRepositorio ocorrencias, Categorias categorias, Cartoes cartoes, Clock clock) {
+			OcorrenciaContaRepositorio ocorrencias, Categorias categorias, Cartoes cartoes, Compras compras, Clock clock) {
 		this.contas = contas;
 		this.valores = valores;
 		this.ocorrencias = ocorrencias;
 		this.categorias = categorias;
 		this.cartoes = cartoes;
+		this.compras = compras;
 		this.clock = clock;
 	}
 
@@ -75,11 +98,19 @@ public class ContaFixaServico {
 			ContaFixa.FormaPagamento formaPagamento, UUID cartaoId, Boolean essencial) {
 	}
 
-	/** Uma conta no mês: a ocorrência e o cadastro, com o valor que vale a partir deste mês. */
-	public record ContaDoMes(OcorrenciaConta ocorrencia, ContaFixa conta, BigDecimal valorAtual) {
+	/**
+	 * Uma conta no mês: a ocorrência e o cadastro, com o valor que vale a partir deste mês. {@code compra} é o
+	 * lançamento da fatura que a paga (HU-14), quando ligada.
+	 */
+	public record ContaDoMes(OcorrenciaConta ocorrencia, ContaFixa conta, BigDecimal valorAtual, Compras.Compra compra) {
 
 		public OcorrenciaConta.Status status() {
 			return ocorrencia.status(conta.isNoCartao());
+		}
+
+		/** Ligada à fatura, vale o lançamento, nunca a ocorrência (RN-23); senão, o pago ou o previsto (RN-25). */
+		public BigDecimal valor() {
+			return compra != null ? compra.valor() : ocorrencia.valor();
 		}
 	}
 
@@ -170,8 +201,10 @@ public class ContaFixaServico {
 			.filter(o -> porId.get(o.getContaFixaId()).getFormaPagamento() == ContaFixa.FormaPagamento.DEBITO_AUTOMATICO)
 			.filter(o -> o.debitaSozinha(hoje))
 			.forEach(o -> o.pagar(o.getVencimento(), o.getValorPrevisto()));
+		var ligadas = comprasLigadas(usuarioId, doMes);
 		return doMes.stream()
-			.map(o -> new ContaDoMes(o, porId.get(o.getContaFixaId()), atuais.get(o.getContaFixaId())))
+			.map(o -> new ContaDoMes(o, porId.get(o.getContaFixaId()), atuais.get(o.getContaFixaId()),
+					ligadas.get(o.getLancamentoId())))
 			.sorted(Comparator.comparing((ContaDoMes c) -> c.ocorrencia().getVencimento())
 				.thenComparing(c -> c.conta().getDescricao()))
 			.toList();
@@ -206,12 +239,135 @@ public class ContaFixaServico {
 		return item;
 	}
 
+	/**
+	 * HU-14.1 (RN-23): cada conta fixa paga neste cartão é ligada à compra importada de valor até R$ 1 diferente,
+	 * em até 5 dias do vencimento. Com mais de um par possível, ganham os de data mais perto e depois os de valor mais
+	 * perto; cada compra paga uma conta só. A que não acha continua aguardando a fatura.
+	 */
+	@Transactional
+	public void ligarImportadas(UUID usuarioId, UUID cartaoId, List<UUID> lancamentoIds) {
+		var contasDoCartao = contas.findByUsuarioIdAndCartaoId(usuarioId, cartaoId).stream()
+			.filter(ContaFixa::isNoCartao)
+			.toList();
+		var importadas = compras.buscar(usuarioId, lancamentoIds).stream().filter(c -> c.valor().signum() > 0).toList();
+		if (contasDoCartao.isEmpty() || importadas.isEmpty()) {
+			return;
+		}
+		var de = importadas.stream().map(Compras.Compra::data).min(Comparator.naturalOrder()).orElseThrow()
+			.minusDays(DIAS_DO_VENCIMENTO);
+		var ate = importadas.stream().map(Compras.Compra::data).max(Comparator.naturalOrder()).orElseThrow()
+			.plusDays(DIAS_DO_VENCIMENTO);
+		// O mês só ganha ocorrências quando é aberto; a fatura pode chegar antes disso.
+		for (var mes = YearMonth.from(de); !mes.isAfter(YearMonth.from(ate)); mes = mes.plusMonths(1)) {
+			doMes(usuarioId, mes);
+		}
+		var abertas = ocorrencias
+			.findByContaFixaIdInAndVencimentoBetween(contasDoCartao.stream().map(ContaFixa::getId).toList(), de, ate)
+			.stream()
+			.filter(OcorrenciaConta::emAberto)
+			.toList();
+		var jaPagam = ocorrencias.findByUsuarioIdAndLancamentoIdIn(usuarioId, lancamentoIds).stream()
+			.map(OcorrenciaConta::getLancamentoId)
+			.collect(Collectors.toSet());
+
+		record Par(OcorrenciaConta ocorrencia, Compras.Compra compra, long dias, BigDecimal diferenca) {
+		}
+		var pares = new ArrayList<Par>();
+		for (var o : abertas) {
+			for (var c : importadas) {
+				var dias = Math.abs(ChronoUnit.DAYS.between(c.data(), o.getVencimento()));
+				var diferenca = c.valor().subtract(o.getValorPrevisto()).abs();
+				if (!jaPagam.contains(c.id()) && dias <= DIAS_DO_VENCIMENTO
+						&& diferenca.compareTo(DIFERENCA_DE_VALOR) <= 0) {
+					pares.add(new Par(o, c, dias, diferenca));
+				}
+			}
+		}
+		pares.sort(Comparator.comparingLong(Par::dias).thenComparing(Par::diferenca));
+		var usadas = new HashSet<UUID>();
+		for (var p : pares) {
+			if (p.ocorrencia().emAberto() && !usadas.contains(p.compra().id())) {
+				usadas.add(p.compra().id());
+				p.ocorrencia().ligar(p.compra().id());
+			}
+		}
+	}
+
+	/**
+	 * HU-14.2: compras do cartão da conta perto do vencimento que ainda não pagam outra conta, as de valor mais
+	 * perto do previsto primeiro.
+	 */
+	@Transactional(readOnly = true)
+	public List<Compras.Compra> candidatas(UUID usuarioId, UUID ocorrenciaId) {
+		var item = item(usuarioId, ocorrenciaId);
+		var conta = noCartao(item);
+		var o = item.ocorrencia();
+		var doCartao = compras.doCartao(usuarioId, conta.getCartaoId(), o.getVencimento().minusDays(DIAS_DE_BUSCA),
+				o.getVencimento().plusDays(DIAS_DE_BUSCA));
+		var jaPagam = ocorrencias
+			.findByUsuarioIdAndLancamentoIdIn(usuarioId, doCartao.stream().map(Compras.Compra::id).toList())
+			.stream()
+			.filter(outra -> !outra.getId().equals(o.getId()))
+			.map(OcorrenciaConta::getLancamentoId)
+			.collect(Collectors.toSet());
+		return doCartao.stream()
+			.filter(c -> !jaPagam.contains(c.id()))
+			.sorted(Comparator.comparing((Compras.Compra c) -> c.valor().subtract(o.getValorPrevisto()).abs())
+				.thenComparingLong(c -> Math.abs(ChronoUnit.DAYS.between(c.data(), o.getVencimento()))))
+			.toList();
+	}
+
+	/** HU-14.2: liga à mão a uma compra do mesmo cartão, mesmo fora da regra automática. Passa a "na fatura". */
+	@Transactional
+	public ContaDoMes ligar(UUID usuarioId, UUID ocorrenciaId, UUID lancamentoId) {
+		var item = item(usuarioId, ocorrenciaId);
+		var conta = noCartao(item);
+		var compra = compras.buscar(usuarioId, List.of(lancamentoId)).stream()
+			.filter(c -> c.cartaoId().equals(conta.getCartaoId()))
+			.findFirst()
+			.orElseThrow(() -> ErroApi.campos(Map.of("lancamentoId", COMPRA_DE_OUTRO_CARTAO)));
+		var pagaOutra = ocorrencias.findByUsuarioIdAndLancamentoIdIn(usuarioId, List.of(lancamentoId)).stream()
+			.anyMatch(x -> !x.getId().equals(ocorrenciaId));
+		if (pagaOutra) {
+			throw new ErroApi(HttpStatus.CONFLICT, COMPRA_JA_LIGADA);
+		}
+		item.ocorrencia().ligar(lancamentoId);
+		return new ContaDoMes(item.ocorrencia(), conta, item.valorAtual(), compra);
+	}
+
+	/** HU-14.2: a compra não era esta conta; volta a aguardar a fatura. */
+	@Transactional
+	public ContaDoMes desligar(UUID usuarioId, UUID ocorrenciaId) {
+		var item = item(usuarioId, ocorrenciaId);
+		noCartao(item);
+		item.ocorrencia().desligar();
+		return new ContaDoMes(item.ocorrencia(), item.conta(), item.valorAtual(), null);
+	}
+
+	private static ContaFixa noCartao(ContaDoMes item) {
+		if (!item.conta().isNoCartao()) {
+			throw new ErroApi(HttpStatus.CONFLICT, SO_NO_CARTAO);
+		}
+		return item.conta();
+	}
+
+	/** Lançamento → compra, das ocorrências ligadas à fatura. */
+	private Map<UUID, Compras.Compra> comprasLigadas(UUID usuarioId, Collection<OcorrenciaConta> lista) {
+		var ids = lista.stream().map(OcorrenciaConta::getLancamentoId).filter(Objects::nonNull).toList();
+		if (ids.isEmpty()) {
+			// Quem pergunta pela ocorrência não ligada passa null: o Map.of() não aceita.
+			return new HashMap<>();
+		}
+		return compras.buscar(usuarioId, ids).stream().collect(Collectors.toMap(Compras.Compra::id, Function.identity()));
+	}
+
 	private ContaDoMes item(UUID usuarioId, UUID ocorrenciaId) {
 		var o = ocorrencias.findByIdAndUsuarioId(ocorrenciaId, usuarioId)
 			.orElseThrow(() -> new ErroApi(HttpStatus.NOT_FOUND, OCORRENCIA_NAO_ENCONTRADA));
 		var conta = conta(usuarioId, o.getContaFixaId());
 		var mes = mesAtual().isBefore(o.getMes()) ? o.getMes() : mesAtual();
-		return new ContaDoMes(o, conta, valorEm(valores.findByContaFixaIdIn(List.of(conta.getId())), mes));
+		var compra = o.getLancamentoId() == null ? null : comprasLigadas(usuarioId, List.of(o)).get(o.getLancamentoId());
+		return new ContaDoMes(o, conta, valorEm(valores.findByContaFixaIdIn(List.of(conta.getId())), mes), compra);
 	}
 
 	/**

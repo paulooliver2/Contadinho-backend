@@ -6,6 +6,7 @@ import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
 
+import br.com.contadinho.cartoes.Compras;
 import br.com.contadinho.comum.UsuarioLogado;
 import br.com.contadinho.gastos.domain.ContaFixa;
 import br.com.contadinho.gastos.domain.OcorrenciaConta;
@@ -30,7 +31,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Contas fixas, as ocorrências de cada mês (HU-11) e o pagamento delas (HU-13). */
+/** Contas fixas, as ocorrências de cada mês (HU-11), o pagamento delas (HU-13) e a ligação com a fatura (HU-14). */
 @RestController
 @RequestMapping("/api/contas-fixas")
 public class ContasFixasController {
@@ -87,19 +88,47 @@ public class ContasFixasController {
 			/** O valor do cadastro a partir deste mês, para editar a conta (HU-11.3). */
 			@NotNull BigDecimal valorAtual,
 			@NotNull LocalDate vencimento,
-			/** O que conta no mês: o pago, se houver; senão, o previsto (RN-25). */
+			/**
+			 * O que conta no mês: o lançamento da fatura, se ligada (RN-23); o pago, se houver; senão, o previsto
+			 * (RN-25).
+			 */
 			@NotNull BigDecimal valor,
 			@NotNull BigDecimal valorPrevisto,
 			/** Só quando paga (HU-13). */
 			BigDecimal valorPago,
 			LocalDate pagoEm,
+			/** O lançamento da fatura que a paga, quando "na fatura" (HU-14). */
+			CompraDaFatura compra,
 			@NotNull OcorrenciaConta.Status status) {
 
 		public static OcorrenciaResposta de(ContaFixaServico.ContaDoMes c) {
 			var o = c.ocorrencia();
 			return new OcorrenciaResposta(o.getId(), ContaFixaResposta.de(c.conta()), c.valorAtual(),
-					o.getVencimento(), o.valor(), o.getValorPrevisto(), o.getValorPago(), o.getPagoEm(), c.status());
+					o.getVencimento(), c.valor(), o.getValorPrevisto(), o.getValorPago(), o.getPagoEm(),
+					c.compra() == null ? null : CompraDaFatura.de(c.compra()), c.status());
 		}
+	}
+
+	/** Uma compra da fatura que paga, ou pode pagar, a conta (HU-14). */
+	public record CompraDaFatura(
+			@NotNull UUID id,
+			@NotNull LocalDate data,
+			@NotNull String descricao,
+			@NotNull BigDecimal valor,
+			Integer parcelaAtual,
+			Integer parcelaTotal,
+			/** Apelido e final, como "Inter •• 9453". */
+			@NotNull String cartao,
+			/** Mês de vencimento da fatura. */
+			@NotNull YearMonth fatura) {
+
+		public static CompraDaFatura de(Compras.Compra c) {
+			return new CompraDaFatura(c.id(), c.data(), c.descricao(), c.valor(), c.parcelaAtual(), c.parcelaTotal(),
+					c.cartao(), c.fatura());
+		}
+	}
+
+	public record LigacaoPedido(@NotNull(message = "Escolha a compra.") UUID lancamentoId) {
 	}
 
 	/** HU-13.1. Sem data, vale hoje; sem valor, o previsto. */
@@ -165,6 +194,25 @@ public class ContasFixasController {
 	@DeleteMapping("/ocorrencias/{id}/pagamento")
 	public OcorrenciaResposta desfazerPagamento(@UsuarioLogado UUID usuarioId, @PathVariable UUID id) {
 		return OcorrenciaResposta.de(servico.desfazerPagamento(usuarioId, id));
+	}
+
+	/** HU-14.2: compras do cartão perto do vencimento que ainda não pagam outra conta. */
+	@GetMapping("/ocorrencias/{id}/candidatas")
+	public List<CompraDaFatura> candidatas(@UsuarioLogado UUID usuarioId, @PathVariable UUID id) {
+		return servico.candidatas(usuarioId, id).stream().map(CompraDaFatura::de).toList();
+	}
+
+	/** HU-14.2: liga à mão. Conta fora do cartão ou compra que já paga outra conta é 409. */
+	@PutMapping("/ocorrencias/{id}/lancamento")
+	public OcorrenciaResposta ligar(@UsuarioLogado UUID usuarioId, @PathVariable UUID id,
+			@Valid @RequestBody LigacaoPedido pedido) {
+		return OcorrenciaResposta.de(servico.ligar(usuarioId, id, pedido.lancamentoId()));
+	}
+
+	/** HU-14.2: volta a aguardar a fatura. */
+	@DeleteMapping("/ocorrencias/{id}/lancamento")
+	public OcorrenciaResposta desligar(@UsuarioLogado UUID usuarioId, @PathVariable UUID id) {
+		return OcorrenciaResposta.de(servico.desligar(usuarioId, id));
 	}
 
 	/** HU-11.4. */

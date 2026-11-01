@@ -15,11 +15,14 @@ public interface Compras {
 	/** As compras do dono com esses ids; as de outro dono não vêm (RNF-01). */
 	List<Compra> buscar(UUID usuarioId, Collection<UUID> lancamentoIds);
 
+	/** As compras do cartão do dono feitas entre {@code de} e {@code ate}, inclusive; estornos não vêm. */
+	List<Compra> doCartao(UUID usuarioId, UUID cartaoId, LocalDate de, LocalDate ate);
+
 	/**
 	 * @param cartao apelido e final, como "Itaú •• 3310"
 	 * @param fatura mês de vencimento da fatura (RN-58)
 	 */
-	record Compra(UUID id, LocalDate data, String descricao, BigDecimal valor, Integer parcelaAtual,
+	record Compra(UUID id, UUID cartaoId, LocalDate data, String descricao, BigDecimal valor, Integer parcelaAtual,
 			Integer parcelaTotal, String cartao, YearMonth fatura) {
 	}
 

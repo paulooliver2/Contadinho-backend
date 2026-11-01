@@ -195,6 +195,68 @@
         }
       }
     },
+    "/api/contas-fixas/ocorrencias/{id}/lancamento" : {
+      "put" : {
+        "tags" : [ "contas-fixas-controller" ],
+        "operationId" : "ligar",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/LigacaoPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OcorrenciaResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "contas-fixas-controller" ],
+        "operationId" : "desligar",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OcorrenciaResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/conta/pix" : {
       "put" : {
         "tags" : [ "conta-controller" ],
@@ -914,6 +976,36 @@
         }
       }
     },
+    "/api/contas-fixas/ocorrencias/{id}/candidatas" : {
+      "get" : {
+        "tags" : [ "contas-fixas-controller" ],
+        "operationId" : "candidatas",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/CompraDaFatura"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/contas-fixas/mes/{mes}" : {
       "get" : {
         "tags" : [ "contas-fixas-controller" ],
@@ -1286,6 +1378,90 @@
         },
         "required" : [ "categoriaId", "descricao", "diaVencimento", "formaPagamento", "id" ]
       },
+      "LigacaoPedido" : {
+        "type" : "object",
+        "properties" : {
+          "lancamentoId" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        },
+        "required" : [ "lancamentoId" ]
+      },
+      "CompraDaFatura" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "data" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "descricao" : {
+            "type" : "string"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "parcelaAtual" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "parcelaTotal" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "cartao" : {
+            "type" : "string"
+          },
+          "fatura" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "cartao", "data", "descricao", "fatura", "id", "valor" ]
+      },
+      "OcorrenciaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "conta" : {
+            "$ref" : "#/components/schemas/ContaFixaResposta"
+          },
+          "valorAtual" : {
+            "type" : "number"
+          },
+          "vencimento" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "valorPrevisto" : {
+            "type" : "number"
+          },
+          "valorPago" : {
+            "type" : "number"
+          },
+          "pagoEm" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "compra" : {
+            "$ref" : "#/components/schemas/CompraDaFatura"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "A_PAGAR", "PAGA", "AGUARDANDO_FATURA", "NA_FATURA" ]
+          }
+        },
+        "required" : [ "conta", "id", "status", "valor", "valorAtual", "valorPrevisto", "vencimento" ]
+      },
       "PixPedido" : {
         "type" : "object",
         "properties" : {
@@ -1440,43 +1616,6 @@
             "minimum" : 0.01
           }
         }
-      },
-      "OcorrenciaResposta" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "conta" : {
-            "$ref" : "#/components/schemas/ContaFixaResposta"
-          },
-          "valorAtual" : {
-            "type" : "number"
-          },
-          "vencimento" : {
-            "type" : "string",
-            "format" : "date"
-          },
-          "valor" : {
-            "type" : "number"
-          },
-          "valorPrevisto" : {
-            "type" : "number"
-          },
-          "valorPago" : {
-            "type" : "number"
-          },
-          "pagoEm" : {
-            "type" : "string",
-            "format" : "date"
-          },
-          "status" : {
-            "type" : "string",
-            "enum" : [ "A_PAGAR", "PAGA", "AGUARDANDO_FATURA", "NA_FATURA" ]
-          }
-        },
-        "required" : [ "conta", "id", "status", "valor", "valorAtual", "valorPrevisto", "vencimento" ]
       },
       "NovoCartaoPedido" : {
         "type" : "object",

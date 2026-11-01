@@ -79,6 +79,16 @@ public class OcorrenciaConta {
 		return emAberto() && !automaticoDesfeito && !vencimento.isAfter(hoje);
 	}
 
+	/** HU-14: paga pelo lançamento da fatura; passa a "na fatura" (RN-57). */
+	public void ligar(UUID lancamentoId) {
+		this.lancamentoId = lancamentoId;
+	}
+
+	/** HU-14.2: volta a aguardar a fatura. */
+	public void desligar() {
+		this.lancamentoId = null;
+	}
+
 	/** HU-11.3: o valor ou o dia mudou do mês atual em diante. */
 	public void acompanhar(BigDecimal valor, LocalDate vencimento) {
 		this.valorPrevisto = valor;
@@ -116,6 +126,10 @@ public class OcorrenciaConta {
 
 	public LocalDate getPagoEm() {
 		return pagoEm;
+	}
+
+	public UUID getLancamentoId() {
+		return lancamentoId;
 	}
 
 }

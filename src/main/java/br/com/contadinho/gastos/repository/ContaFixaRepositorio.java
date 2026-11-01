@@ -13,6 +13,8 @@ public interface ContaFixaRepositorio extends JpaRepository<ContaFixa, UUID> {
 
 	List<ContaFixa> findByUsuarioId(UUID usuarioId);
 
+	List<ContaFixa> findByUsuarioIdAndCartaoId(UUID usuarioId, UUID cartaoId);
+
 	Optional<ContaFixa> findByIdAndUsuarioId(UUID id, UUID usuarioId);
 
 }

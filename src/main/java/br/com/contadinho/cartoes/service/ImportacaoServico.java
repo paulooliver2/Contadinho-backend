@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import br.com.contadinho.cartoes.ComprasImportadas;
 import br.com.contadinho.cartoes.domain.Cartao;
 import br.com.contadinho.cartoes.domain.Importacao;
 import br.com.contadinho.cartoes.domain.Lancamento;
@@ -22,6 +23,7 @@ import br.com.contadinho.cartoes.repository.ImportacaoRepositorio;
 import br.com.contadinho.cartoes.repository.LancamentoRepositorio;
 import br.com.contadinho.comum.ErroApi;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -44,14 +46,17 @@ public class ImportacaoServico {
 
 	private final ResponsavelServico responsaveis;
 
+	private final ApplicationEventPublisher eventos;
+
 	private final Clock clock;
 
 	public ImportacaoServico(FaturaServico faturas, LancamentoRepositorio lancamentos, ImportacaoRepositorio importacoes,
-			ResponsavelServico responsaveis, Clock clock) {
+			ResponsavelServico responsaveis, ApplicationEventPublisher eventos, Clock clock) {
 		this.faturas = faturas;
 		this.lancamentos = lancamentos;
 		this.importacoes = importacoes;
 		this.responsaveis = responsaveis;
+		this.eventos = eventos;
 		this.clock = clock;
 	}
 
@@ -97,7 +102,7 @@ public class ImportacaoServico {
 		var fatura = faturas.gravarFatura(usuarioId, cartao, mes);
 		var importacao = importacoes.save(new Importacao(usuarioId, fatura.getId(), nomeArquivo, previa.arquivo().formato(), previa.arquivo().modelo(),
 				previa.arquivo().totalArquivo(), Instant.now(clock)));
-		int novos = 0;
+		var novas = new ArrayList<UUID>();
 		int casadas = 0;
 		int jaExistiam = 0;
 		for (var i : previa.itens()) {
@@ -110,11 +115,14 @@ public class ImportacaoServico {
 			}
 			else {
 				// RN-17: a parcela chega com o responsável que o dono escolheu para as próximas.
-				responsaveis.gravarNova(Lancamento.doArquivo(usuarioId, cartao.getId(), fatura.getId(), importacao.getId(), i.item()));
-				novos++;
+				novas.add(responsaveis.gravarNova(Lancamento.doArquivo(usuarioId, cartao.getId(), fatura.getId(), importacao.getId(), i.item())).getId());
 			}
 		}
-		return new Resultado(importacao.getId(), mes, novos, jaExistiam, casadas);
+		// HU-14: as contas fixas pagas neste cartão procuram o lançamento delas.
+		if (!novas.isEmpty()) {
+			eventos.publishEvent(new ComprasImportadas(usuarioId, cartao.getId(), novas));
+		}
+		return new Resultado(importacao.getId(), mes, novas.size(), jaExistiam, casadas);
 	}
 
 	/** O {@code codigo} diz ao app que precisa pedir a senha do PDF (HU-39). */

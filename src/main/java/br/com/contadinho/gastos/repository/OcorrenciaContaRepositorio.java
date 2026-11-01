@@ -2,6 +2,7 @@ package br.com.contadinho.gastos.repository;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -20,6 +21,12 @@ public interface OcorrenciaContaRepositorio extends JpaRepository<OcorrenciaCont
 	List<OcorrenciaConta> findByUsuarioIdAndCompetencia(UUID usuarioId, LocalDate competencia);
 
 	List<OcorrenciaConta> findByContaFixaIdAndCompetenciaGreaterThanEqual(UUID contaFixaId, LocalDate competencia);
+
+	List<OcorrenciaConta> findByContaFixaIdInAndVencimentoBetween(Collection<UUID> contaFixaIds, LocalDate de,
+			LocalDate ate);
+
+	/** RN-23: as que esses lançamentos já pagam. */
+	List<OcorrenciaConta> findByUsuarioIdAndLancamentoIdIn(UUID usuarioId, Collection<UUID> lancamentoIds);
 
 	/** Cria a ocorrência do mês se ainda não existe; duas telas abrindo o mesmo mês não duplicam. */
 	@Modifying(flushAutomatically = true)
