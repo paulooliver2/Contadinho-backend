@@ -1,6 +1,8 @@
 package br.com.contadinho.cartoes.service;
 
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.List;
@@ -30,10 +32,17 @@ public class FaturasDoMesServico implements Faturas {
 
 	private final CartaoRepositorio cartoes;
 
-	public FaturasDoMesServico(FaturaRepositorio faturas, LancamentoRepositorio lancamentos, CartaoRepositorio cartoes) {
+	private final FaturaServico fatura;
+
+	private final Clock clock;
+
+	public FaturasDoMesServico(FaturaRepositorio faturas, LancamentoRepositorio lancamentos, CartaoRepositorio cartoes,
+			FaturaServico fatura, Clock clock) {
 		this.faturas = faturas;
 		this.lancamentos = lancamentos;
 		this.cartoes = cartoes;
+		this.fatura = fatura;
+		this.clock = clock;
 	}
 
 	@Override
@@ -49,9 +58,27 @@ public class FaturasDoMesServico implements Faturas {
 		return doMes.stream().map(f -> {
 			var itens = porFatura.getOrDefault(f.getId(), List.of());
 			var cartao = cartoesPorId.get(f.getCartaoId());
-			return new FaturaDoMes(f.getCartaoId(), cartao.getApelido() + " •• " + cartao.getUltimos4(), f.getVencimento(),
-					soma(itens), soma(itens.stream().filter(l -> l.getPessoaId() == null).toList()));
+			return new FaturaDoMes(f.getCartaoId(), nome(cartao), f.getVencimento(), soma(itens),
+					soma(itens.stream().filter(l -> l.getPessoaId() == null).toList()));
 		}).sorted(Comparator.comparing(FaturaDoMes::vencimento).thenComparing(FaturaDoMes::cartao)).toList();
+	}
+
+	@Override
+	public List<FaturaAtual> atuais(UUID usuarioId) {
+		var hoje = LocalDate.now(clock);
+		return cartoes.findByUsuarioIdAndEncerradoEmIsNullOrderByCriadoEm(usuarioId).stream().map(cartao -> {
+			var mes = YearMonth.from(hoje);
+			if (cartao.ciclo(mes).vencimento().isBefore(hoje)) {
+				mes = mes.plusMonths(1);
+			}
+			var vista = fatura.ver(usuarioId, cartao.getId(), mes);
+			return new FaturaAtual(cartao.getId(), nome(cartao), mes, vista.ciclo().vencimento(), !vista.aberta(),
+					vista.total(), vista.partes().stream().map(p -> new Parte(p.pessoaId(), p.total())).toList());
+		}).toList();
+	}
+
+	private static String nome(Cartao cartao) {
+		return cartao.getApelido() + " •• " + cartao.getUltimos4();
 	}
 
 	private static BigDecimal soma(List<Lancamento> itens) {

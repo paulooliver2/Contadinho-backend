@@ -1,7 +1,9 @@
 package br.com.contadinho.gastos;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -19,6 +21,23 @@ public interface Despesas {
 	 * @param avulsos gastos avulsos, todos já pagos
 	 */
 	record DespesasDoMes(BigDecimal contasPagas, BigDecimal contasAPagar, BigDecimal avulsos) {
+	}
+
+	/**
+	 * HU-24: as contas fixas fora do cartão ainda a pagar, deste mês e do próximo, pelo vencimento; as deste mês que
+	 * já venceram vêm primeiro. Cria as ocorrências que faltam nos dois meses.
+	 */
+	ContasAVencer aVencer(UUID usuarioId, int quantas);
+
+	/**
+	 * @param fixosPorMes o valor do cadastro de todas as contas fixas ativas, no cartão inclusive
+	 * @param proximas no máximo {@code quantas}
+	 */
+	record ContasAVencer(BigDecimal fixosPorMes, List<ContaAVencer> proximas) {
+	}
+
+	/** {@code valor} é o previsto (RN-25). */
+	record ContaAVencer(UUID ocorrenciaId, String descricao, LocalDate vencimento, BigDecimal valor) {
 	}
 
 }

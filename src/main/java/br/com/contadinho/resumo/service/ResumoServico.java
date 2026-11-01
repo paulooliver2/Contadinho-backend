@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import br.com.contadinho.cartoes.Faturas;
 import br.com.contadinho.gastos.Despesas;
+import br.com.contadinho.receber.AReceber;
 import br.com.contadinho.receitas.Receitas;
 
 import org.springframework.stereotype.Service;
@@ -27,12 +28,15 @@ public class ResumoServico {
 
 	private final Faturas faturas;
 
+	private final AReceber aReceber;
+
 	private final Clock clock;
 
-	public ResumoServico(Receitas receitas, Despesas despesas, Faturas faturas, Clock clock) {
+	public ResumoServico(Receitas receitas, Despesas despesas, Faturas faturas, AReceber aReceber, Clock clock) {
 		this.receitas = receitas;
 		this.despesas = despesas;
 		this.faturas = faturas;
+		this.aReceber = aReceber;
 		this.clock = clock;
 	}
 
@@ -73,6 +77,17 @@ public class ResumoServico {
 	public Resumo doMes(UUID usuarioId, YearMonth mes) {
 		return new Resumo(receitas.doMes(usuarioId, mes), despesas.doMes(usuarioId, mes),
 				faturas.queVencemEm(usuarioId, mes), LocalDate.now(clock));
+	}
+
+	/** HU-24: o que pede ação agora, independente do mês do resumo. */
+	public record Proximos(Despesas.ContasAVencer contas, AReceber.SituacaoAReceber aReceber,
+			List<Faturas.FaturaAtual> faturas) {
+	}
+
+	/** As 3 próximas contas a vencer, quem ainda deve e a fatura atual de cada cartão. */
+	@Transactional
+	public Proximos proximos(UUID usuarioId) {
+		return new Proximos(despesas.aVencer(usuarioId, 3), aReceber.situacao(usuarioId), faturas.atuais(usuarioId));
 	}
 
 }

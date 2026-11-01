@@ -1186,6 +1186,24 @@
         "security" : [ ]
       }
     },
+    "/api/resumo/proximos" : {
+      "get" : {
+        "tags" : [ "resumo-controller" ],
+        "operationId" : "proximos",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ProximosResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/resumo/mes/{mes}" : {
       "get" : {
         "tags" : [ "resumo-controller" ],
@@ -2457,6 +2475,138 @@
           }
         },
         "required" : [ "email", "nome", "senha" ]
+      },
+      "AReceberDoInicioResposta" : {
+        "type" : "object",
+        "properties" : {
+          "total" : {
+            "type" : "number"
+          },
+          "original" : {
+            "type" : "number"
+          },
+          "devedores" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/DevedorResposta"
+            }
+          }
+        },
+        "required" : [ "devedores", "original", "total" ]
+      },
+      "ContasAVencerResposta" : {
+        "type" : "object",
+        "properties" : {
+          "fixosPorMes" : {
+            "type" : "number"
+          },
+          "proximas" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ProximaContaResposta"
+            }
+          }
+        },
+        "required" : [ "fixosPorMes", "proximas" ]
+      },
+      "DevedorResposta" : {
+        "type" : "object",
+        "properties" : {
+          "pessoaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "saldo" : {
+            "type" : "number"
+          },
+          "pagouParte" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "pagouParte", "pessoaId", "saldo" ]
+      },
+      "FaturaAtualResposta" : {
+        "type" : "object",
+        "properties" : {
+          "cartaoId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "cartao" : {
+            "type" : "string"
+          },
+          "mes" : {
+            "type" : "string"
+          },
+          "vencimento" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "fechada" : {
+            "type" : "boolean"
+          },
+          "total" : {
+            "type" : "number"
+          },
+          "partes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ParteDaFaturaAtual"
+            }
+          }
+        },
+        "required" : [ "cartao", "cartaoId", "fechada", "mes", "partes", "total", "vencimento" ]
+      },
+      "ParteDaFaturaAtual" : {
+        "type" : "object",
+        "properties" : {
+          "pessoaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "total" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "total" ]
+      },
+      "ProximaContaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "ocorrenciaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "descricao" : {
+            "type" : "string"
+          },
+          "vencimento" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "valor" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "descricao", "ocorrenciaId", "valor", "vencimento" ]
+      },
+      "ProximosResposta" : {
+        "type" : "object",
+        "properties" : {
+          "contas" : {
+            "$ref" : "#/components/schemas/ContasAVencerResposta"
+          },
+          "aReceber" : {
+            "$ref" : "#/components/schemas/AReceberDoInicioResposta"
+          },
+          "faturas" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FaturaAtualResposta"
+            }
+          }
+        },
+        "required" : [ "aReceber", "contas", "faturas" ]
       },
       "DespesasDoResumo" : {
         "type" : "object",
