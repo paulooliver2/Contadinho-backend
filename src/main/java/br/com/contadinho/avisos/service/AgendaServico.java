@@ -15,6 +15,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
+import br.com.contadinho.avisos.domain.PreferenciasAvisos;
 import br.com.contadinho.cartoes.Faturas;
 import br.com.contadinho.gastos.Despesas;
 import br.com.contadinho.pessoas.Pessoas;
@@ -29,12 +30,6 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class AgendaServico {
-
-	/** HU-26: dias antes do vencimento da conta; o padrão até a tela de preferências (HU-28). */
-	public static final int DIAS_ANTES_DA_CONTA = 2;
-
-	/** HU-27.2: dias antes do vencimento da fatura; o padrão até a tela de preferências (HU-28). */
-	public static final int DIAS_ANTES_DA_FATURA = 3;
 
 	public static final LocalTime HORA = LocalTime.of(9, 0);
 
@@ -52,13 +47,17 @@ public class AgendaServico {
 
 	private final Pessoas pessoas;
 
+	private final PreferenciasServico preferencias;
+
 	private final Clock clock;
 
-	public AgendaServico(Despesas despesas, Faturas faturas, AReceber aReceber, Pessoas pessoas, Clock clock) {
+	public AgendaServico(Despesas despesas, Faturas faturas, AReceber aReceber, Pessoas pessoas,
+			PreferenciasServico preferencias, Clock clock) {
 		this.despesas = despesas;
 		this.faturas = faturas;
 		this.aReceber = aReceber;
 		this.pessoas = pessoas;
+		this.preferencias = preferencias;
 		this.clock = clock;
 	}
 
@@ -97,25 +96,32 @@ public class AgendaServico {
 		var agora = LocalDateTime.now(clock);
 		var hoje = agora.toLocalDate();
 		var limite = hoje.plusDays(DIAS_AGENDADOS);
+		var prefs = preferencias.ler(usuarioId);
 		var avisos = new ArrayList<Aviso>();
-		contas(usuarioId, limite, avisos);
-		faturas(usuarioId, hoje, limite, avisos);
+		if (prefs.isContaAtivo()) {
+			contas(usuarioId, limite, prefs.getContaAntecedencia(), avisos);
+		}
+		if (prefs.isFaturaFechouAtivo() || prefs.isFaturaReceberAtivo()) {
+			faturas(usuarioId, hoje, limite, prefs, avisos);
+		}
 		return avisos.stream()
+			.map(a -> new Aviso(a.chave(), a.tipo(), prefs.foraDoSilencio(a.quando()), a.titulo(), a.texto(), a.acao(),
+					a.destino()))
 			.filter(a -> a.quando().isAfter(agora) && !a.quando().toLocalDate().isAfter(limite))
 			.sorted(Comparator.comparing(Aviso::quando).thenComparing(Aviso::chave))
 			.limit(MAXIMO)
 			.toList();
 	}
 
-	/** HU-26: 2 dias antes e no dia; em débito automático o banco paga sozinho, então não há aviso no dia. */
-	private void contas(UUID usuarioId, LocalDate limite, List<Aviso> avisos) {
-		for (var c : despesas.aPagarAte(usuarioId, limite.plusDays(DIAS_ANTES_DA_CONTA))) {
+	/** HU-26: dias antes e no dia; em débito automático o banco paga sozinho, então não há aviso no dia. */
+	private void contas(UUID usuarioId, LocalDate limite, int diasAntes, List<Aviso> avisos) {
+		for (var c : despesas.aPagarAte(usuarioId, limite.plusDays(diasAntes))) {
 			var valor = reais(c.valor());
 			var destino = new Destino(Tela.CONTA, c.ocorrenciaId(), YearMonth.from(c.vencimento()));
 			avisos.add(new Aviso("conta-antes:" + c.ocorrenciaId(), Tipo.CONTA_ANTES,
-					c.vencimento().minusDays(DIAS_ANTES_DA_CONTA).atTime(HORA),
-					c.debitoAutomatico() ? c.descricao() + ": débito automático em " + DIAS_ANTES_DA_CONTA + " dias"
-							: c.descricao() + " vence em " + DIAS_ANTES_DA_CONTA + " dias",
+					c.vencimento().minusDays(diasAntes).atTime(HORA),
+					c.debitoAutomatico() ? c.descricao() + ": débito automático " + emDias(diasAntes)
+							: c.descricao() + " vence " + emDias(diasAntes),
 					c.debitoAutomatico() ? "Deixe " + valor + " na conta para o débito." : valor + " · toque para marcar como paga.",
 					null, destino));
 			if (!c.debitoAutomatico()) {
@@ -126,11 +132,12 @@ public class AgendaServico {
 	}
 
 	/**
-	 * HU-27: no dia seguinte ao último dia de compras, lembra de importar; 3 dias antes do vencimento, se alguém ainda
-	 * deve compras daquela fatura, diz quanto e de quem.
+	 * HU-27: no dia seguinte ao último dia de compras, lembra de importar; dias antes do vencimento, se alguém ainda
+	 * deve compras daquela fatura, diz quanto e de quem. Cada um pode estar desligado (HU-28).
 	 */
-	private void faturas(UUID usuarioId, LocalDate hoje, LocalDate limite, List<Aviso> avisos) {
-		var ciclos = faturas.ciclos(usuarioId, hoje.minusDays(1), limite.plusDays(DIAS_ANTES_DA_FATURA));
+	private void faturas(UUID usuarioId, LocalDate hoje, LocalDate limite, PreferenciasAvisos prefs, List<Aviso> avisos) {
+		var diasAntes = prefs.getFaturaAntecedencia();
+		var ciclos = faturas.ciclos(usuarioId, hoje.minusDays(1), limite.plusDays(diasAntes));
 		if (ciclos.isEmpty()) {
 			return;
 		}
@@ -141,9 +148,15 @@ public class AgendaServico {
 		var nomes = pessoas.rotulos(usuarioId, emAberto.values().stream().flatMap(m -> m.keySet().stream()).toList());
 		for (var f : ciclos) {
 			var chave = f.cartaoId() + ":" + f.mes();
-			avisos.add(new Aviso("fatura-fechou:" + chave, Tipo.FATURA_FECHOU, f.fechamento().plusDays(1).atTime(HORA),
-					"Fatura " + f.cartao() + " fechou", "Importe o arquivo do banco para dividir as compras.", null,
-					new Destino(Tela.FATURA, f.cartaoId(), f.mes())));
+			if (prefs.isFaturaFechouAtivo()) {
+				avisos.add(new Aviso("fatura-fechou:" + chave, Tipo.FATURA_FECHOU,
+						f.fechamento().plusDays(1).atTime(HORA), "Fatura " + f.cartao() + " fechou",
+						"Importe o arquivo do banco para dividir as compras.", null,
+						new Destino(Tela.FATURA, f.cartaoId(), f.mes())));
+			}
+			if (!prefs.isFaturaReceberAtivo()) {
+				continue;
+			}
 			var devem = emAberto.getOrDefault(f.cartaoId() + "|" + f.mes(), Map.of());
 			// HU-27.3: sem saldo a receber da fatura, não há o segundo aviso.
 			if (!devem.isEmpty()) {
@@ -155,11 +168,16 @@ public class AgendaServico {
 				var destino = devem.size() == 1 ? new Destino(Tela.PESSOA, devem.keySet().iterator().next(), null)
 						: new Destino(Tela.RECEBER, null, null);
 				avisos.add(new Aviso("fatura-receber:" + chave, Tipo.FATURA_A_RECEBER,
-						f.vencimento().minusDays(DIAS_ANTES_DA_FATURA).atTime(HORA),
-						"Fatura " + f.cartao() + " vence em " + DIAS_ANTES_DA_FATURA + " dias",
+						f.vencimento().minusDays(diasAntes).atTime(HORA),
+						"Fatura " + f.cartao() + " vence " + emDias(diasAntes),
 						"Faltam " + reais(total) + " de " + juntar(quem) + ".", "Cobrar", destino));
 			}
 		}
+	}
+
+	/** "amanhã", "em 3 dias". */
+	private static String emDias(int dias) {
+		return dias == 1 ? "amanhã" : "em " + dias + " dias";
 	}
 
 	/** "Lucas", "Lucas e Ana", "Lucas, Ana e Rafa". */

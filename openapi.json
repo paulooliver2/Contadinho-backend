@@ -404,6 +404,50 @@
         }
       }
     },
+    "/api/avisos/preferencias" : {
+      "get" : {
+        "tags" : [ "avisos-controller" ],
+        "operationId" : "preferencias",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PreferenciasResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put" : {
+        "tags" : [ "avisos-controller" ],
+        "operationId" : "salvar",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PreferenciasPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PreferenciasResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/receitas" : {
       "post" : {
         "tags" : [ "receitas-controller" ],
@@ -1989,6 +2033,74 @@
           }
         },
         "required" : [ "chave", "tipo" ]
+      },
+      "PreferenciasPedido" : {
+        "type" : "object",
+        "properties" : {
+          "contaAtivo" : {
+            "type" : "boolean"
+          },
+          "contaAntecedencia" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "faturaFechouAtivo" : {
+            "type" : "boolean"
+          },
+          "faturaReceberAtivo" : {
+            "type" : "boolean"
+          },
+          "faturaAntecedencia" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "silencioAtivo" : {
+            "type" : "boolean"
+          },
+          "silencioInicio" : {
+            "type" : "string",
+            "example" : "22:00"
+          },
+          "silencioFim" : {
+            "type" : "string",
+            "example" : "08:00"
+          }
+        },
+        "required" : [ "contaAntecedencia", "contaAtivo", "faturaAntecedencia", "faturaFechouAtivo", "faturaReceberAtivo", "silencioAtivo", "silencioFim", "silencioInicio" ]
+      },
+      "PreferenciasResposta" : {
+        "type" : "object",
+        "properties" : {
+          "contaAtivo" : {
+            "type" : "boolean"
+          },
+          "contaAntecedencia" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "faturaFechouAtivo" : {
+            "type" : "boolean"
+          },
+          "faturaReceberAtivo" : {
+            "type" : "boolean"
+          },
+          "faturaAntecedencia" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "silencioAtivo" : {
+            "type" : "boolean"
+          },
+          "silencioInicio" : {
+            "type" : "string",
+            "example" : "22:00"
+          },
+          "silencioFim" : {
+            "type" : "string",
+            "example" : "08:00"
+          }
+        },
+        "required" : [ "contaAntecedencia", "contaAtivo", "faturaAntecedencia", "faturaFechouAtivo", "faturaReceberAtivo", "silencioAtivo", "silencioFim", "silencioInicio" ]
       },
       "ConfirmacaoReceitaPedido" : {
         "type" : "object",
