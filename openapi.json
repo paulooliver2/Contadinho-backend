@@ -158,10 +158,65 @@
         }
       }
     },
+    "/api/gastos/{id}" : {
+      "put" : {
+        "tags" : [ "gastos-controller" ],
+        "operationId" : "alterar_1",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/GastoPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GastoResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "gastos-controller" ],
+        "operationId" : "excluir_2",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
     "/api/contas-fixas/{id}" : {
       "put" : {
         "tags" : [ "contas-fixas-controller" ],
-        "operationId" : "alterar_1",
+        "operationId" : "alterar_2",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -496,10 +551,38 @@
         }
       }
     },
+    "/api/gastos" : {
+      "post" : {
+        "tags" : [ "gastos-controller" ],
+        "operationId" : "cadastrar_1",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/GastoPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GastoResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/contas-fixas" : {
       "post" : {
         "tags" : [ "contas-fixas-controller" ],
-        "operationId" : "cadastrar_1",
+        "operationId" : "cadastrar_2",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -635,7 +718,7 @@
       },
       "post" : {
         "tags" : [ "cartoes-controller" ],
-        "operationId" : "cadastrar_2",
+        "operationId" : "cadastrar_3",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -905,7 +988,7 @@
     "/api/auth/cadastro" : {
       "post" : {
         "tags" : [ "autenticacao-controller" ],
-        "operationId" : "cadastrar_3",
+        "operationId" : "cadastrar_4",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -976,6 +1059,32 @@
         }
       }
     },
+    "/api/gastos/mes/{mes}" : {
+      "get" : {
+        "tags" : [ "gastos-controller" ],
+        "operationId" : "doMes",
+        "parameters" : [ {
+          "name" : "mes",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/GastosDoMesResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/contas-fixas/ocorrencias/{id}/candidatas" : {
       "get" : {
         "tags" : [ "contas-fixas-controller" ],
@@ -1009,7 +1118,7 @@
     "/api/contas-fixas/mes/{mes}" : {
       "get" : {
         "tags" : [ "contas-fixas-controller" ],
-        "operationId" : "doMes",
+        "operationId" : "doMes_1",
         "parameters" : [ {
           "name" : "mes",
           "in" : "path",
@@ -1149,7 +1258,7 @@
     "/api/receber/emprestimos/{id}" : {
       "delete" : {
         "tags" : [ "emprestimos-controller" ],
-        "operationId" : "excluir_2",
+        "operationId" : "excluir_3",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -1306,6 +1415,116 @@
         },
         "required" : [ "lancamento", "proximas" ]
       },
+      "GastoPedido" : {
+        "type" : "object",
+        "properties" : {
+          "descricao" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          },
+          "valor" : {
+            "type" : "number",
+            "minimum" : 0.01
+          },
+          "data" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "categoriaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "formaPagamento" : {
+            "type" : "string",
+            "enum" : [ "PIX_BOLETO", "DEBITO", "CARTAO" ]
+          },
+          "cartaoId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "essencial" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "categoriaId", "descricao", "formaPagamento", "valor" ]
+      },
+      "CompraDaFatura" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "data" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "descricao" : {
+            "type" : "string"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "parcelaAtual" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "parcelaTotal" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "cartao" : {
+            "type" : "string"
+          },
+          "fatura" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "cartao", "data", "descricao", "fatura", "id", "valor" ]
+      },
+      "GastoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "descricao" : {
+            "type" : "string"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "data" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "categoriaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "formaPagamento" : {
+            "type" : "string",
+            "enum" : [ "PIX_BOLETO", "DEBITO", "CARTAO" ]
+          },
+          "cartaoId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "essencial" : {
+            "type" : "boolean"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "PAGO", "AGUARDANDO_FATURA", "NA_FATURA" ]
+          },
+          "compra" : {
+            "$ref" : "#/components/schemas/CompraDaFatura"
+          }
+        },
+        "required" : [ "categoriaId", "data", "descricao", "formaPagamento", "id", "status", "valor" ]
+      },
       "ContaFixaPedido" : {
         "type" : "object",
         "properties" : {
@@ -1387,40 +1606,6 @@
           }
         },
         "required" : [ "lancamentoId" ]
-      },
-      "CompraDaFatura" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "data" : {
-            "type" : "string",
-            "format" : "date"
-          },
-          "descricao" : {
-            "type" : "string"
-          },
-          "valor" : {
-            "type" : "number"
-          },
-          "parcelaAtual" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "parcelaTotal" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "cartao" : {
-            "type" : "string"
-          },
-          "fatura" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "cartao", "data", "descricao", "fatura", "id", "valor" ]
       },
       "OcorrenciaResposta" : {
         "type" : "object",
@@ -2112,6 +2297,24 @@
           }
         },
         "required" : [ "emAberto", "numero", "valor" ]
+      },
+      "GastosDoMesResposta" : {
+        "type" : "object",
+        "properties" : {
+          "total" : {
+            "type" : "number"
+          },
+          "noCartao" : {
+            "type" : "number"
+          },
+          "gastos" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/GastoResposta"
+            }
+          }
+        },
+        "required" : [ "gastos", "noCartao", "total" ]
       },
       "ContasDoMesResposta" : {
         "type" : "object",

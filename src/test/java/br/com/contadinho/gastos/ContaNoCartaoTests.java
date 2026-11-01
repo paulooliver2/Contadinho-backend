@@ -2,12 +2,10 @@ package br.com.contadinho.gastos;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
-import java.util.Base64;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -77,26 +75,9 @@ class ContaNoCartaoTests {
 
 	/** Compras como {id, dias a partir do vencimento, valor, descrição}. */
 	private void importar(Object[]... compras) {
-		var ofx = new StringBuilder("""
-				OFXHEADER:100
-				DATA:OFXSGML
-				VERSION:102
-				ENCODING:USASCII
-				CHARSET:1252
-
-				<OFX><CREDITCARDMSGSRSV1><CCSTMTTRNRS><CCSTMTRS><CURDEF>BRL<BANKTRANLIST>
-				""");
-		for (var c : compras) {
-			ofx.append("<STMTTRN><TRNTYPE>DEBIT<DTPOSTED>")
-				.append(VENCIMENTO.plusDays((int) c[1]).format(DateTimeFormatter.BASIC_ISO_DATE))
-				.append("<TRNAMT>-").append(c[2]).append("<FITID>").append(c[0]).append("<MEMO>").append(c[3])
-				.append("</STMTTRN>\n");
-		}
-		ofx.append("</BANKTRANLIST></CCSTMTRS></CCSTMTTRNRS></CREDITCARDMSGSRSV1></OFX>\n");
-		var corpo = Map.<String, Object>of("nomeArquivo", "fatura.ofx", "conteudo",
-				Base64.getEncoder().encodeToString(ofx.toString().getBytes(StandardCharsets.US_ASCII)), "mes",
-				ATUAL.plusMonths(1).toString(), "mesmas", List.of());
-		assertThat(api.post("/api/cartoes/" + cartao + "/importacoes", corpo, dono).status()).isEqualTo(201);
+		FaturaOfx.importar(api, dono, cartao, ATUAL.plusMonths(1), Arrays.stream(compras)
+			.map(c -> new FaturaOfx.Compra((String) c[0], VENCIMENTO.plusDays((int) c[1]), (String) c[2], (String) c[3]))
+			.toArray(FaturaOfx.Compra[]::new));
 	}
 
 	@SuppressWarnings("unchecked")
@@ -166,7 +147,7 @@ class ContaNoCartaoTests {
 		var ligar = api.put("/api/contas-fixas/ocorrencias/" + id(aguardando) + "/lancamento",
 				Map.of("lancamentoId", lancamento("a1")), dono);
 		assertThat(ligar.status()).isEqualTo(409);
-		assertThat(ligar.texto("detail")).isEqualTo("Essa compra já paga outra conta fixa.");
+		assertThat(ligar.texto("detail")).isEqualTo("Essa compra já paga outra conta fixa ou um gasto.");
 	}
 
 	@Test

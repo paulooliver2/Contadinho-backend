@@ -6,7 +6,6 @@ import java.time.YearMonth;
 import java.util.List;
 import java.util.UUID;
 
-import br.com.contadinho.cartoes.Compras;
 import br.com.contadinho.comum.UsuarioLogado;
 import br.com.contadinho.gastos.domain.ContaFixa;
 import br.com.contadinho.gastos.domain.OcorrenciaConta;
@@ -106,25 +105,6 @@ public class ContasFixasController {
 			return new OcorrenciaResposta(o.getId(), ContaFixaResposta.de(c.conta()), c.valorAtual(),
 					o.getVencimento(), c.valor(), o.getValorPrevisto(), o.getValorPago(), o.getPagoEm(),
 					c.compra() == null ? null : CompraDaFatura.de(c.compra()), c.status());
-		}
-	}
-
-	/** Uma compra da fatura que paga, ou pode pagar, a conta (HU-14). */
-	public record CompraDaFatura(
-			@NotNull UUID id,
-			@NotNull LocalDate data,
-			@NotNull String descricao,
-			@NotNull BigDecimal valor,
-			Integer parcelaAtual,
-			Integer parcelaTotal,
-			/** Apelido e final, como "Inter •• 9453". */
-			@NotNull String cartao,
-			/** Mês de vencimento da fatura. */
-			@NotNull YearMonth fatura) {
-
-		public static CompraDaFatura de(Compras.Compra c) {
-			return new CompraDaFatura(c.id(), c.data(), c.descricao(), c.valor(), c.parcelaAtual(), c.parcelaTotal(),
-					c.cartao(), c.fatura());
 		}
 	}
 

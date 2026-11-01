@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -58,12 +57,7 @@ public class ContaFixaServico {
 
 	public static final String COMPRA_DE_OUTRO_CARTAO = "Escolha uma compra do cartão desta conta.";
 
-	public static final String COMPRA_JA_LIGADA = "Essa compra já paga outra conta fixa.";
-
-	/** RN-23: a compra cai em até 5 dias do vencimento, com até R$ 1 de diferença. */
-	static final int DIAS_DO_VENCIMENTO = 5;
-
-	static final BigDecimal DIFERENCA_DE_VALOR = BigDecimal.ONE;
+	public static final String COMPRA_JA_LIGADA = "Essa compra já paga outra conta fixa ou um gasto.";
 
 	/** HU-14.2: ao ligar à mão, as compras do cartão até um mês antes ou depois do vencimento. */
 	static final int DIAS_DE_BUSCA = 31;
@@ -80,16 +74,20 @@ public class ContaFixaServico {
 
 	private final Compras compras;
 
+	private final LigacaoFatura ligacao;
+
 	private final Clock clock;
 
 	public ContaFixaServico(ContaFixaRepositorio contas, ContaFixaValorRepositorio valores,
-			OcorrenciaContaRepositorio ocorrencias, Categorias categorias, Cartoes cartoes, Compras compras, Clock clock) {
+			OcorrenciaContaRepositorio ocorrencias, Categorias categorias, Cartoes cartoes, Compras compras,
+			LigacaoFatura ligacao, Clock clock) {
 		this.contas = contas;
 		this.valores = valores;
 		this.ocorrencias = ocorrencias;
 		this.categorias = categorias;
 		this.cartoes = cartoes;
 		this.compras = compras;
+		this.ligacao = ligacao;
 		this.clock = clock;
 	}
 
@@ -254,9 +252,9 @@ public class ContaFixaServico {
 			return;
 		}
 		var de = importadas.stream().map(Compras.Compra::data).min(Comparator.naturalOrder()).orElseThrow()
-			.minusDays(DIAS_DO_VENCIMENTO);
+			.minusDays(LigacaoFatura.DIAS);
 		var ate = importadas.stream().map(Compras.Compra::data).max(Comparator.naturalOrder()).orElseThrow()
-			.plusDays(DIAS_DO_VENCIMENTO);
+			.plusDays(LigacaoFatura.DIAS);
 		// O mês só ganha ocorrências quando é aberto; a fatura pode chegar antes disso.
 		for (var mes = YearMonth.from(de); !mes.isAfter(YearMonth.from(ate)); mes = mes.plusMonths(1)) {
 			doMes(usuarioId, mes);
@@ -265,32 +263,10 @@ public class ContaFixaServico {
 			.findByContaFixaIdInAndVencimentoBetween(contasDoCartao.stream().map(ContaFixa::getId).toList(), de, ate)
 			.stream()
 			.filter(OcorrenciaConta::emAberto)
+			.map(o -> new LigacaoFatura.Pendente<>(o, o.getVencimento(), o.getValorPrevisto()))
 			.toList();
-		var jaPagam = ocorrencias.findByUsuarioIdAndLancamentoIdIn(usuarioId, lancamentoIds).stream()
-			.map(OcorrenciaConta::getLancamentoId)
-			.collect(Collectors.toSet());
-
-		record Par(OcorrenciaConta ocorrencia, Compras.Compra compra, long dias, BigDecimal diferenca) {
-		}
-		var pares = new ArrayList<Par>();
-		for (var o : abertas) {
-			for (var c : importadas) {
-				var dias = Math.abs(ChronoUnit.DAYS.between(c.data(), o.getVencimento()));
-				var diferenca = c.valor().subtract(o.getValorPrevisto()).abs();
-				if (!jaPagam.contains(c.id()) && dias <= DIAS_DO_VENCIMENTO
-						&& diferenca.compareTo(DIFERENCA_DE_VALOR) <= 0) {
-					pares.add(new Par(o, c, dias, diferenca));
-				}
-			}
-		}
-		pares.sort(Comparator.comparingLong(Par::dias).thenComparing(Par::diferenca));
-		var usadas = new HashSet<UUID>();
-		for (var p : pares) {
-			if (p.ocorrencia().emAberto() && !usadas.contains(p.compra().id())) {
-				usadas.add(p.compra().id());
-				p.ocorrencia().ligar(p.compra().id());
-			}
-		}
+		LigacaoFatura.parear(abertas, importadas, ligacao.usados(usuarioId, lancamentoIds))
+			.forEach(p -> p.item().ligar(p.compra().id()));
 	}
 
 	/**
@@ -304,12 +280,8 @@ public class ContaFixaServico {
 		var o = item.ocorrencia();
 		var doCartao = compras.doCartao(usuarioId, conta.getCartaoId(), o.getVencimento().minusDays(DIAS_DE_BUSCA),
 				o.getVencimento().plusDays(DIAS_DE_BUSCA));
-		var jaPagam = ocorrencias
-			.findByUsuarioIdAndLancamentoIdIn(usuarioId, doCartao.stream().map(Compras.Compra::id).toList())
-			.stream()
-			.filter(outra -> !outra.getId().equals(o.getId()))
-			.map(OcorrenciaConta::getLancamentoId)
-			.collect(Collectors.toSet());
+		var jaPagam = ligacao.usados(usuarioId, doCartao.stream().map(Compras.Compra::id).toList());
+		jaPagam.remove(o.getLancamentoId());
 		return doCartao.stream()
 			.filter(c -> !jaPagam.contains(c.id()))
 			.sorted(Comparator.comparing((Compras.Compra c) -> c.valor().subtract(o.getValorPrevisto()).abs())
@@ -326,9 +298,8 @@ public class ContaFixaServico {
 			.filter(c -> c.cartaoId().equals(conta.getCartaoId()))
 			.findFirst()
 			.orElseThrow(() -> ErroApi.campos(Map.of("lancamentoId", COMPRA_DE_OUTRO_CARTAO)));
-		var pagaOutra = ocorrencias.findByUsuarioIdAndLancamentoIdIn(usuarioId, List.of(lancamentoId)).stream()
-			.anyMatch(x -> !x.getId().equals(ocorrenciaId));
-		if (pagaOutra) {
+		if (!lancamentoId.equals(item.ocorrencia().getLancamentoId())
+				&& ligacao.usados(usuarioId, List.of(lancamentoId)).contains(lancamentoId)) {
 			throw new ErroApi(HttpStatus.CONFLICT, COMPRA_JA_LIGADA);
 		}
 		item.ocorrencia().ligar(lancamentoId);
