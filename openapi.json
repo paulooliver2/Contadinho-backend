@@ -404,6 +404,61 @@
         }
       }
     },
+    "/api/cartoes/{id}" : {
+      "put" : {
+        "tags" : [ "cartoes-controller" ],
+        "operationId" : "alterar_4",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/EdicaoCartaoPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CartaoResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "cartoes-controller" ],
+        "operationId" : "excluir_4",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
     "/api/avisos/preferencias" : {
       "get" : {
         "tags" : [ "avisos-controller" ],
@@ -955,6 +1010,26 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/cartoes/{id}/encerramento" : {
+      "post" : {
+        "tags" : [ "cartoes-controller" ],
+        "operationId" : "encerrar_2",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
           }
         }
       }
@@ -1565,7 +1640,7 @@
     "/api/receber/emprestimos/{id}" : {
       "delete" : {
         "tags" : [ "emprestimos-controller" ],
-        "operationId" : "excluir_4",
+        "operationId" : "excluir_5",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -2034,6 +2109,66 @@
         },
         "required" : [ "chave", "tipo" ]
       },
+      "EdicaoCartaoPedido" : {
+        "type" : "object",
+        "properties" : {
+          "apelido" : {
+            "type" : "string",
+            "maxLength" : 40,
+            "minLength" : 0
+          },
+          "diaFechamento" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 31,
+            "minimum" : 1
+          },
+          "diaVencimento" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 31,
+            "minimum" : 1
+          }
+        },
+        "required" : [ "diaFechamento", "diaVencimento" ]
+      },
+      "CartaoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "apelido" : {
+            "type" : "string"
+          },
+          "banco" : {
+            "type" : "string",
+            "enum" : [ "NUBANK", "ITAU", "BRADESCO", "BANCO_DO_BRASIL", "CAIXA", "SANTANDER", "INTER", "C6", "BTG", "MERCADO_PAGO", "OUTRO" ]
+          },
+          "bancoNome" : {
+            "type" : "string"
+          },
+          "ultimos4" : {
+            "type" : "string"
+          },
+          "diaFechamento" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "diaVencimento" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "faturaAberta" : {
+            "type" : "string"
+          },
+          "podeExcluir" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "apelido", "banco", "bancoNome", "diaFechamento", "diaVencimento", "faturaAberta", "id", "podeExcluir", "ultimos4" ]
+      },
       "PreferenciasPedido" : {
         "type" : "object",
         "properties" : {
@@ -2298,40 +2433,6 @@
           }
         },
         "required" : [ "banco", "diaFechamento", "diaVencimento", "ultimos4" ]
-      },
-      "CartaoResposta" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "apelido" : {
-            "type" : "string"
-          },
-          "banco" : {
-            "type" : "string",
-            "enum" : [ "NUBANK", "ITAU", "BRADESCO", "BANCO_DO_BRASIL", "CAIXA", "SANTANDER", "INTER", "C6", "BTG", "MERCADO_PAGO", "OUTRO" ]
-          },
-          "bancoNome" : {
-            "type" : "string"
-          },
-          "ultimos4" : {
-            "type" : "string"
-          },
-          "diaFechamento" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "diaVencimento" : {
-            "type" : "integer",
-            "format" : "int32"
-          },
-          "faturaAberta" : {
-            "type" : "string"
-          }
-        },
-        "required" : [ "apelido", "banco", "bancoNome", "diaFechamento", "diaVencimento", "faturaAberta", "id", "ultimos4" ]
       },
       "ConfirmacaoPedido" : {
         "type" : "object",

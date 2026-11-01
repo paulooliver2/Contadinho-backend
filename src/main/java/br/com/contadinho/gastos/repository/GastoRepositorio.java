@@ -13,6 +13,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** Toda consulta recebe o usuário dono (RNF-01). */
 public interface GastoRepositorio extends JpaRepository<Gasto, UUID> {
 
+	boolean existsByUsuarioIdAndCartaoId(UUID usuarioId, UUID cartaoId);
+
+
 	Optional<Gasto> findByIdAndUsuarioId(UUID id, UUID usuarioId);
 
 	List<Gasto> findByUsuarioIdAndDataBetween(UUID usuarioId, LocalDate de, LocalDate ate);

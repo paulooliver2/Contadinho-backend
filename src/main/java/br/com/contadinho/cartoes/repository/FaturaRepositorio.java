@@ -11,6 +11,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface FaturaRepositorio extends JpaRepository<Fatura, UUID> {
 
+	boolean existsByCartaoId(UUID cartaoId);
+
 	/** A fatura que vence entre as duas datas, isto é, num dado mês (RN-58). */
 	Optional<Fatura> findFirstByCartaoIdAndVencimentoBetweenOrderByVencimento(UUID cartaoId, LocalDate de, LocalDate ate);
 

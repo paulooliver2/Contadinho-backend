@@ -82,6 +82,18 @@ public class Cartao {
 		return diaVencimento;
 	}
 
+	/** HU-45: as faturas já gravadas guardam as datas delas; os dias novos valem para as próximas (RN-55). */
+	public void alterar(String apelido, int diaFechamento, int diaVencimento) {
+		this.apelido = apelido;
+		this.diaFechamento = (short) diaFechamento;
+		this.diaVencimento = (short) diaVencimento;
+	}
+
+	/** HU-45.3: some das listas, e o histórico continua. */
+	public void encerrar(Instant agora) {
+		this.encerradoEm = agora;
+	}
+
 	/** Datas de uma fatura, identificada pelo mês de vencimento (RN-58). */
 	public record Ciclo(YearMonth mes, LocalDate fechamento, LocalDate vencimento) {
 	}

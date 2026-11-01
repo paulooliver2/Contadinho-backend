@@ -11,6 +11,9 @@ import org.springframework.data.jpa.repository.JpaRepository;
 /** Toda consulta recebe o usuário dono (RNF-01). */
 public interface ContaFixaRepositorio extends JpaRepository<ContaFixa, UUID> {
 
+	boolean existsByUsuarioIdAndCartaoId(UUID usuarioId, UUID cartaoId);
+
+
 	List<ContaFixa> findByUsuarioId(UUID usuarioId);
 
 	List<ContaFixa> findByUsuarioIdAndCartaoId(UUID usuarioId, UUID cartaoId);
