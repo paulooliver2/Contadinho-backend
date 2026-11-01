@@ -16,6 +16,8 @@ public interface LancamentoRepositorio extends JpaRepository<Lancamento, UUID> {
 
 	List<Lancamento> findByFaturaIdOrderByDataDescDescricao(UUID faturaId);
 
+	List<Lancamento> findByFaturaIdIn(Collection<UUID> faturaIds);
+
 	Optional<Lancamento> findByIdAndUsuarioId(UUID id, UUID usuarioId);
 
 	List<Lancamento> findByUsuarioIdAndIdIn(UUID usuarioId, Collection<UUID> ids);

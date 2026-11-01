@@ -1186,10 +1186,36 @@
         "security" : [ ]
       }
     },
+    "/api/resumo/mes/{mes}" : {
+      "get" : {
+        "tags" : [ "resumo-controller" ],
+        "operationId" : "doMes",
+        "parameters" : [ {
+          "name" : "mes",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ResumoDoMesResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/receitas/mes/{mes}" : {
       "get" : {
         "tags" : [ "receitas-controller" ],
-        "operationId" : "doMes",
+        "operationId" : "doMes_1",
         "parameters" : [ {
           "name" : "mes",
           "in" : "path",
@@ -1260,7 +1286,7 @@
     "/api/gastos/mes/{mes}" : {
       "get" : {
         "tags" : [ "gastos-controller" ],
-        "operationId" : "doMes_1",
+        "operationId" : "doMes_2",
         "parameters" : [ {
           "name" : "mes",
           "in" : "path",
@@ -1316,7 +1342,7 @@
     "/api/contas-fixas/mes/{mes}" : {
       "get" : {
         "tags" : [ "contas-fixas-controller" ],
-        "operationId" : "doMes_2",
+        "operationId" : "doMes_3",
         "parameters" : [ {
           "name" : "mes",
           "in" : "path",
@@ -2431,6 +2457,89 @@
           }
         },
         "required" : [ "email", "nome", "senha" ]
+      },
+      "DespesasDoResumo" : {
+        "type" : "object",
+        "properties" : {
+          "total" : {
+            "type" : "number"
+          },
+          "pago" : {
+            "type" : "number"
+          },
+          "aPagar" : {
+            "type" : "number"
+          },
+          "faturas" : {
+            "type" : "number"
+          },
+          "contasFixas" : {
+            "type" : "number"
+          },
+          "avulsos" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "aPagar", "avulsos", "contasFixas", "faturas", "pago", "total" ]
+      },
+      "FaturaDoResumo" : {
+        "type" : "object",
+        "properties" : {
+          "cartaoId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "cartao" : {
+            "type" : "string"
+          },
+          "vencimento" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "total" : {
+            "type" : "number"
+          },
+          "minhaParte" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "cartao", "cartaoId", "minhaParte", "total", "vencimento" ]
+      },
+      "ReceitasDoResumo" : {
+        "type" : "object",
+        "properties" : {
+          "total" : {
+            "type" : "number"
+          },
+          "recebido" : {
+            "type" : "number"
+          },
+          "previsto" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "previsto", "recebido", "total" ]
+      },
+      "ResumoDoMesResposta" : {
+        "type" : "object",
+        "properties" : {
+          "saldo" : {
+            "type" : "number"
+          },
+          "receitas" : {
+            "$ref" : "#/components/schemas/ReceitasDoResumo"
+          },
+          "despesas" : {
+            "$ref" : "#/components/schemas/DespesasDoResumo"
+          },
+          "faturas" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FaturaDoResumo"
+            }
+          }
+        },
+        "required" : [ "despesas", "faturas", "receitas", "saldo" ]
       },
       "ReceitasDoMesResposta" : {
         "type" : "object",

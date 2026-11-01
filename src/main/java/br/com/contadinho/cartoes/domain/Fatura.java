@@ -39,6 +39,10 @@ public class Fatura {
 		return id;
 	}
 
+	public UUID getCartaoId() {
+		return cartaoId;
+	}
+
 	public LocalDate getFechamento() {
 		return fechamento;
 	}
