@@ -11,10 +11,65 @@
     "bearer" : [ ]
   } ],
   "paths" : {
+    "/api/receitas/{id}" : {
+      "put" : {
+        "tags" : [ "receitas-controller" ],
+        "operationId" : "alterar",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReceitaPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReceitaResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "receitas-controller" ],
+        "operationId" : "excluir",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
     "/api/pessoas/{id}" : {
       "put" : {
         "tags" : [ "pessoas-controller" ],
-        "operationId" : "alterar",
+        "operationId" : "alterar_1",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -49,7 +104,7 @@
       },
       "delete" : {
         "tags" : [ "pessoas-controller" ],
-        "operationId" : "excluir",
+        "operationId" : "excluir_1",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -104,7 +159,7 @@
       },
       "delete" : {
         "tags" : [ "faturas-controller" ],
-        "operationId" : "excluir_1",
+        "operationId" : "excluir_2",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -161,7 +216,7 @@
     "/api/gastos/{id}" : {
       "put" : {
         "tags" : [ "gastos-controller" ],
-        "operationId" : "alterar_1",
+        "operationId" : "alterar_2",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -196,7 +251,7 @@
       },
       "delete" : {
         "tags" : [ "gastos-controller" ],
-        "operationId" : "excluir_2",
+        "operationId" : "excluir_3",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -216,7 +271,7 @@
     "/api/contas-fixas/{id}" : {
       "put" : {
         "tags" : [ "contas-fixas-controller" ],
-        "operationId" : "alterar_2",
+        "operationId" : "alterar_3",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -349,6 +404,123 @@
         }
       }
     },
+    "/api/receitas" : {
+      "post" : {
+        "tags" : [ "receitas-controller" ],
+        "operationId" : "cadastrar",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ReceitaPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReceitaResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/receitas/{id}/encerrar" : {
+      "post" : {
+        "tags" : [ "receitas-controller" ],
+        "operationId" : "encerrar",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReceitaResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/receitas/ocorrencias/{id}/confirmacao" : {
+      "post" : {
+        "tags" : [ "receitas-controller" ],
+        "operationId" : "confirmar",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ConfirmacaoReceitaPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OcorrenciaReceitaResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "receitas-controller" ],
+        "operationId" : "desfazer",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OcorrenciaReceitaResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/receber/pessoas/{pessoaId}/pagamentos" : {
       "post" : {
         "tags" : [ "receber-controller" ],
@@ -472,7 +644,7 @@
       },
       "post" : {
         "tags" : [ "pessoas-controller" ],
-        "operationId" : "cadastrar",
+        "operationId" : "cadastrar_1",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -554,7 +726,7 @@
     "/api/gastos" : {
       "post" : {
         "tags" : [ "gastos-controller" ],
-        "operationId" : "cadastrar_1",
+        "operationId" : "cadastrar_2",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -582,7 +754,7 @@
     "/api/contas-fixas" : {
       "post" : {
         "tags" : [ "contas-fixas-controller" ],
-        "operationId" : "cadastrar_2",
+        "operationId" : "cadastrar_3",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -610,7 +782,7 @@
     "/api/contas-fixas/{id}/encerrar" : {
       "post" : {
         "tags" : [ "contas-fixas-controller" ],
-        "operationId" : "encerrar",
+        "operationId" : "encerrar_1",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -718,7 +890,7 @@
       },
       "post" : {
         "tags" : [ "cartoes-controller" ],
-        "operationId" : "cadastrar_3",
+        "operationId" : "cadastrar_4",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -988,7 +1160,7 @@
     "/api/auth/cadastro" : {
       "post" : {
         "tags" : [ "autenticacao-controller" ],
-        "operationId" : "cadastrar_4",
+        "operationId" : "cadastrar_5",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1012,6 +1184,32 @@
           }
         },
         "security" : [ ]
+      }
+    },
+    "/api/receitas/mes/{mes}" : {
+      "get" : {
+        "tags" : [ "receitas-controller" ],
+        "operationId" : "doMes",
+        "parameters" : [ {
+          "name" : "mes",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ReceitasDoMesResposta"
+                }
+              }
+            }
+          }
+        }
       }
     },
     "/api/receber" : {
@@ -1062,7 +1260,7 @@
     "/api/gastos/mes/{mes}" : {
       "get" : {
         "tags" : [ "gastos-controller" ],
-        "operationId" : "doMes",
+        "operationId" : "doMes_1",
         "parameters" : [ {
           "name" : "mes",
           "in" : "path",
@@ -1118,7 +1316,7 @@
     "/api/contas-fixas/mes/{mes}" : {
       "get" : {
         "tags" : [ "contas-fixas-controller" ],
-        "operationId" : "doMes_1",
+        "operationId" : "doMes_2",
         "parameters" : [ {
           "name" : "mes",
           "in" : "path",
@@ -1238,7 +1436,7 @@
     "/api/receber/pagamentos/{id}" : {
       "delete" : {
         "tags" : [ "receber-controller" ],
-        "operationId" : "desfazer",
+        "operationId" : "desfazer_1",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -1258,7 +1456,7 @@
     "/api/receber/emprestimos/{id}" : {
       "delete" : {
         "tags" : [ "emprestimos-controller" ],
-        "operationId" : "excluir_3",
+        "operationId" : "excluir_4",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -1278,6 +1476,58 @@
   },
   "components" : {
     "schemas" : {
+      "ReceitaPedido" : {
+        "type" : "object",
+        "properties" : {
+          "descricao" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          },
+          "valor" : {
+            "type" : "number",
+            "minimum" : 0.01
+          },
+          "data" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "recorrente" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "descricao", "recorrente", "valor" ]
+      },
+      "ReceitaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "descricao" : {
+            "type" : "string"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "recorrente" : {
+            "type" : "boolean"
+          },
+          "dia" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "primeiroMes" : {
+            "type" : "string"
+          },
+          "encerradaEm" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        },
+        "required" : [ "descricao", "dia", "id", "primeiroMes", "recorrente", "valor" ]
+      },
       "PessoaPedido" : {
         "type" : "object",
         "properties" : {
@@ -1674,6 +1924,45 @@
           }
         },
         "required" : [ "chave", "tipo" ]
+      },
+      "ConfirmacaoReceitaPedido" : {
+        "type" : "object",
+        "properties" : {
+          "valorRecebido" : {
+            "type" : "number",
+            "minimum" : 0.01
+          }
+        }
+      },
+      "OcorrenciaReceitaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "receita" : {
+            "$ref" : "#/components/schemas/ReceitaResposta"
+          },
+          "data" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "valorPrevisto" : {
+            "type" : "number"
+          },
+          "valorRecebido" : {
+            "type" : "number"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "PREVISTA", "A_CONFIRMAR", "RECEBIDA" ]
+          }
+        },
+        "required" : [ "data", "id", "receita", "status", "valor", "valorPrevisto" ]
       },
       "PagamentoPedido" : {
         "type" : "object",
@@ -2142,6 +2431,27 @@
           }
         },
         "required" : [ "email", "nome", "senha" ]
+      },
+      "ReceitasDoMesResposta" : {
+        "type" : "object",
+        "properties" : {
+          "total" : {
+            "type" : "number"
+          },
+          "recebido" : {
+            "type" : "number"
+          },
+          "previsto" : {
+            "type" : "number"
+          },
+          "receitas" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OcorrenciaReceitaResposta"
+            }
+          }
+        },
+        "required" : [ "previsto", "recebido", "receitas", "total" ]
       },
       "ResumoResposta" : {
         "type" : "object",
