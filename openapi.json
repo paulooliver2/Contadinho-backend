@@ -158,6 +158,43 @@
         }
       }
     },
+    "/api/contas-fixas/{id}" : {
+      "put" : {
+        "tags" : [ "contas-fixas-controller" ],
+        "operationId" : "alterar_1",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ContaFixaPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ContaFixaResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/conta/pix" : {
       "put" : {
         "tags" : [ "conta-controller" ],
@@ -397,6 +434,61 @@
         }
       }
     },
+    "/api/contas-fixas" : {
+      "post" : {
+        "tags" : [ "contas-fixas-controller" ],
+        "operationId" : "cadastrar_1",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ContaFixaPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ContaFixaResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/contas-fixas/{id}/encerrar" : {
+      "post" : {
+        "tags" : [ "contas-fixas-controller" ],
+        "operationId" : "encerrar",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ContaFixaResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/cartoes" : {
       "get" : {
         "tags" : [ "cartoes-controller" ],
@@ -419,7 +511,7 @@
       },
       "post" : {
         "tags" : [ "cartoes-controller" ],
-        "operationId" : "cadastrar_1",
+        "operationId" : "cadastrar_2",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -689,7 +781,7 @@
     "/api/auth/cadastro" : {
       "post" : {
         "tags" : [ "autenticacao-controller" ],
-        "operationId" : "cadastrar_2",
+        "operationId" : "cadastrar_3",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -760,6 +852,32 @@
         }
       }
     },
+    "/api/contas-fixas/mes/{mes}" : {
+      "get" : {
+        "tags" : [ "contas-fixas-controller" ],
+        "operationId" : "doMes",
+        "parameters" : [ {
+          "name" : "mes",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ContasDoMesResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/conta" : {
       "get" : {
         "tags" : [ "conta-controller" ],
@@ -771,6 +889,27 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/Conta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/categorias" : {
+      "get" : {
+        "tags" : [ "categorias-controller" ],
+        "operationId" : "listar_2",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/CategoriaResposta"
+                  }
                 }
               }
             }
@@ -1012,6 +1151,78 @@
           }
         },
         "required" : [ "lancamento", "proximas" ]
+      },
+      "ContaFixaPedido" : {
+        "type" : "object",
+        "properties" : {
+          "descricao" : {
+            "type" : "string",
+            "maxLength" : 80,
+            "minLength" : 0
+          },
+          "valor" : {
+            "type" : "number",
+            "minimum" : 0.01
+          },
+          "categoriaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "diaVencimento" : {
+            "type" : "integer",
+            "format" : "int32",
+            "maximum" : 31,
+            "minimum" : 1
+          },
+          "formaPagamento" : {
+            "type" : "string",
+            "enum" : [ "PIX_BOLETO", "DEBITO_AUTOMATICO", "CARTAO" ]
+          },
+          "cartaoId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "essencial" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "categoriaId", "descricao", "diaVencimento", "formaPagamento", "valor" ]
+      },
+      "ContaFixaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "descricao" : {
+            "type" : "string"
+          },
+          "categoriaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "diaVencimento" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "formaPagamento" : {
+            "type" : "string",
+            "enum" : [ "PIX_BOLETO", "DEBITO_AUTOMATICO", "CARTAO" ]
+          },
+          "cartaoId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "essencial" : {
+            "type" : "boolean"
+          },
+          "encerradaEm" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        },
+        "required" : [ "categoriaId", "descricao", "diaVencimento", "formaPagamento", "id" ]
       },
       "PixPedido" : {
         "type" : "object",
@@ -1651,6 +1862,57 @@
         },
         "required" : [ "emAberto", "numero", "valor" ]
       },
+      "ContasDoMesResposta" : {
+        "type" : "object",
+        "properties" : {
+          "total" : {
+            "type" : "number"
+          },
+          "pago" : {
+            "type" : "number"
+          },
+          "aPagar" : {
+            "type" : "number"
+          },
+          "noCartao" : {
+            "type" : "number"
+          },
+          "contas" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/OcorrenciaResposta"
+            }
+          }
+        },
+        "required" : [ "aPagar", "contas", "noCartao", "pago", "total" ]
+      },
+      "OcorrenciaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "conta" : {
+            "$ref" : "#/components/schemas/ContaFixaResposta"
+          },
+          "valorAtual" : {
+            "type" : "number"
+          },
+          "vencimento" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "A_PAGAR", "PAGA", "AGUARDANDO_FATURA", "NA_FATURA" ]
+          }
+        },
+        "required" : [ "conta", "id", "status", "valor", "valorAtual", "vencimento" ]
+      },
       "Conta" : {
         "type" : "object",
         "properties" : {
@@ -1669,6 +1931,25 @@
           }
         },
         "required" : [ "email", "id", "nome" ]
+      },
+      "CategoriaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "nome" : {
+            "type" : "string"
+          },
+          "essencial" : {
+            "type" : "boolean"
+          },
+          "arquivada" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "arquivada", "essencial", "id", "nome" ]
       },
       "FaturaResposta" : {
         "type" : "object",

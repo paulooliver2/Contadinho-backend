@@ -7,11 +7,13 @@ import java.util.Locale;
 import java.util.UUID;
 
 import br.com.contadinho.comum.ErroApi;
+import br.com.contadinho.conta.ContaCriada;
 import br.com.contadinho.conta.domain.Sessao;
 import br.com.contadinho.conta.domain.Usuario;
 import br.com.contadinho.conta.repository.SessaoRepositorio;
 import br.com.contadinho.conta.repository.UsuarioRepositorio;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -39,18 +41,21 @@ public class AutenticacaoServico {
 
 	private final PasswordEncoder senhas;
 
+	private final ApplicationEventPublisher eventos;
+
 	private final Clock clock;
 
 	/** Comparado quando o e-mail não existe, para a resposta demorar o mesmo e não revelar quem tem conta. */
 	private final String hashDeMentira;
 
 	public AutenticacaoServico(UsuarioRepositorio usuarios, SessaoRepositorio sessoes, TentativasLogin tentativas,
-			EmissorTokens tokens, PasswordEncoder senhas, Clock clock) {
+			EmissorTokens tokens, PasswordEncoder senhas, ApplicationEventPublisher eventos, Clock clock) {
 		this.usuarios = usuarios;
 		this.sessoes = sessoes;
 		this.tentativas = tentativas;
 		this.tokens = tokens;
 		this.senhas = senhas;
+		this.eventos = eventos;
 		this.clock = clock;
 		this.hashDeMentira = senhas.encode(UUID.randomUUID().toString());
 	}
@@ -72,6 +77,7 @@ public class AutenticacaoServico {
 		catch (DataIntegrityViolationException e) {
 			throw emailEmUso();
 		}
+		eventos.publishEvent(new ContaCriada(usuario.getId()));
 		return abrirSessao(usuario.getId(), dispositivo, agora);
 	}
 
