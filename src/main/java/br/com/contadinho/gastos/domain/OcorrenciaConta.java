@@ -40,6 +40,9 @@ public class OcorrenciaConta {
 	/** RN-23: o lançamento da fatura em que a conta paga no cartão caiu. */
 	private UUID lancamentoId;
 
+	/** RN-24: o dono desfez o pagamento automático do débito; o app não marca de novo. */
+	private boolean automaticoDesfeito;
+
 	protected OcorrenciaConta() {
 	}
 
@@ -54,6 +57,26 @@ public class OcorrenciaConta {
 	/** Ainda acompanha o cadastro: nem paga nem ligada a um lançamento. */
 	public boolean emAberto() {
 		return pagoEm == null && lancamentoId == null;
+	}
+
+	/** HU-13.1. O valor pago pode diferir do previsto (RN-25). */
+	public void pagar(LocalDate em, BigDecimal valor) {
+		this.pagoEm = em;
+		this.valorPago = valor;
+	}
+
+	/** HU-13.3: desfeito, o débito automático não volta a ser marcado sozinho. */
+	public void desfazerPagamento(boolean debitoAutomatico) {
+		this.pagoEm = null;
+		this.valorPago = null;
+		if (debitoAutomatico) {
+			this.automaticoDesfeito = true;
+		}
+	}
+
+	/** RN-24: débito automático em aberto, já vencido e que o dono não desfez. */
+	public boolean debitaSozinha(LocalDate hoje) {
+		return emAberto() && !automaticoDesfeito && !vencimento.isAfter(hoje);
 	}
 
 	/** HU-11.3: o valor ou o dia mudou do mês atual em diante. */

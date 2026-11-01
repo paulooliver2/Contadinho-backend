@@ -29,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Contas fixas (HU-11): cadastro, mudança de valor do mês atual em diante e encerramento (RN-21), e a ocorrência de
- * cada mês, criada na primeira vez que o mês é aberto.
+ * cada mês, criada na primeira vez que o mês é aberto. Marcar como paga e desfazer (HU-13).
  */
 @Service
 public class ContaFixaServico {
@@ -41,6 +41,12 @@ public class ContaFixaServico {
 	public static final String ESCOLHA_O_CARTAO = "Escolha o cartão.";
 
 	public static final String CONTA_ENCERRADA = "Essa conta já foi encerrada.";
+
+	public static final String OCORRENCIA_NAO_ENCONTRADA = "Conta do mês não encontrada.";
+
+	public static final String PAGA_PELA_FATURA = "Conta no cartão é paga pela fatura.";
+
+	public static final String DATA_FUTURA = "A data não pode ser depois de hoje.";
 
 	private final ContaFixaRepositorio contas;
 
@@ -139,7 +145,10 @@ public class ContaFixaServico {
 		return conta;
 	}
 
-	/** HU-11.2: as contas do mês, pelo vencimento. Cria as ocorrências que faltam das contas ativas no mês. */
+	/**
+	 * HU-11.2: as contas do mês, pelo vencimento. Cria as ocorrências que faltam das contas ativas no mês e marca
+	 * como pago o débito automático que já venceu (RN-24).
+	 */
 	@Transactional
 	public List<ContaDoMes> doMes(UUID usuarioId, YearMonth mes) {
 		var todas = contas.findByUsuarioId(usuarioId);
@@ -155,11 +164,54 @@ public class ContaFixaServico {
 		var atual = mesAtual();
 		var atuais = new HashMap<UUID, BigDecimal>();
 		porConta.forEach((id, lista) -> atuais.put(id, valorEm(lista, atual.isBefore(mes) ? mes : atual)));
-		return ocorrencias.findByUsuarioIdAndCompetencia(usuarioId, mes.atDay(1)).stream()
+		var hoje = LocalDate.now(clock);
+		var doMes = ocorrencias.findByUsuarioIdAndCompetencia(usuarioId, mes.atDay(1));
+		doMes.stream()
+			.filter(o -> porId.get(o.getContaFixaId()).getFormaPagamento() == ContaFixa.FormaPagamento.DEBITO_AUTOMATICO)
+			.filter(o -> o.debitaSozinha(hoje))
+			.forEach(o -> o.pagar(o.getVencimento(), o.getValorPrevisto()));
+		return doMes.stream()
 			.map(o -> new ContaDoMes(o, porId.get(o.getContaFixaId()), atuais.get(o.getContaFixaId())))
 			.sorted(Comparator.comparing((ContaDoMes c) -> c.ocorrencia().getVencimento())
 				.thenComparing(c -> c.conta().getDescricao()))
 			.toList();
+	}
+
+	/**
+	 * HU-13.1: sem data, vale hoje; sem valor, o previsto. Valor diferente do previsto é o que conta no mês (RN-25).
+	 * Conta no cartão não se paga aqui: ela entra pela fatura (RN-23).
+	 */
+	@Transactional
+	public ContaDoMes pagar(UUID usuarioId, UUID ocorrenciaId, LocalDate em, BigDecimal valor) {
+		var item = item(usuarioId, ocorrenciaId);
+		if (item.conta().isNoCartao()) {
+			throw new ErroApi(HttpStatus.CONFLICT, PAGA_PELA_FATURA);
+		}
+		var hoje = LocalDate.now(clock);
+		var data = em == null ? hoje : em;
+		if (data.isAfter(hoje)) {
+			throw ErroApi.campos(Map.of("pagoEm", DATA_FUTURA));
+		}
+		var o = item.ocorrencia();
+		o.pagar(data, valor == null ? o.getValorPrevisto() : valor);
+		return item;
+	}
+
+	/** HU-13.3: volta a ficar a pagar; o débito automático desfeito não é marcado de novo (RN-24). */
+	@Transactional
+	public ContaDoMes desfazerPagamento(UUID usuarioId, UUID ocorrenciaId) {
+		var item = item(usuarioId, ocorrenciaId);
+		item.ocorrencia()
+			.desfazerPagamento(item.conta().getFormaPagamento() == ContaFixa.FormaPagamento.DEBITO_AUTOMATICO);
+		return item;
+	}
+
+	private ContaDoMes item(UUID usuarioId, UUID ocorrenciaId) {
+		var o = ocorrencias.findByIdAndUsuarioId(ocorrenciaId, usuarioId)
+			.orElseThrow(() -> new ErroApi(HttpStatus.NOT_FOUND, OCORRENCIA_NAO_ENCONTRADA));
+		var conta = conta(usuarioId, o.getContaFixaId());
+		var mes = mesAtual().isBefore(o.getMes()) ? o.getMes() : mesAtual();
+		return new ContaDoMes(o, conta, valorEm(valores.findByContaFixaIdIn(List.of(conta.getId())), mes));
 	}
 
 	/**

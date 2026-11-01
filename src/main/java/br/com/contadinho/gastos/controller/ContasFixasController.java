@@ -20,6 +20,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,7 +30,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Contas fixas e as ocorrências de cada mês (HU-11). */
+/** Contas fixas, as ocorrências de cada mês (HU-11) e o pagamento delas (HU-13). */
 @RestController
 @RequestMapping("/api/contas-fixas")
 public class ContasFixasController {
@@ -88,13 +89,24 @@ public class ContasFixasController {
 			@NotNull LocalDate vencimento,
 			/** O que conta no mês: o pago, se houver; senão, o previsto (RN-25). */
 			@NotNull BigDecimal valor,
+			@NotNull BigDecimal valorPrevisto,
+			/** Só quando paga (HU-13). */
+			BigDecimal valorPago,
+			LocalDate pagoEm,
 			@NotNull OcorrenciaConta.Status status) {
 
 		public static OcorrenciaResposta de(ContaFixaServico.ContaDoMes c) {
 			var o = c.ocorrencia();
 			return new OcorrenciaResposta(o.getId(), ContaFixaResposta.de(c.conta()), c.valorAtual(),
-					o.getVencimento(), o.valor(), c.status());
+					o.getVencimento(), o.valor(), o.getValorPrevisto(), o.getValorPago(), o.getPagoEm(), c.status());
 		}
+	}
+
+	/** HU-13.1. Sem data, vale hoje; sem valor, o previsto. */
+	public record PagamentoContaPedido(
+			LocalDate pagoEm,
+			@DecimalMin(value = "0.01", message = "Informe um valor maior que zero.")
+			@Digits(integer = 10, fraction = 2, message = "Use no máximo 2 casas decimais.") BigDecimal valorPago) {
 	}
 
 	public record ContasDoMesResposta(
@@ -140,6 +152,19 @@ public class ContasFixasController {
 	public ContaFixaResposta alterar(@UsuarioLogado UUID usuarioId, @PathVariable UUID id,
 			@Valid @RequestBody ContaFixaPedido pedido) {
 		return ContaFixaResposta.de(servico.alterar(usuarioId, id, pedido.dados()));
+	}
+
+	/** HU-13.1. Conta no cartão é 409: ela entra pela fatura (RN-23). Data depois de hoje é 400. */
+	@PostMapping("/ocorrencias/{id}/pagamento")
+	public OcorrenciaResposta pagar(@UsuarioLogado UUID usuarioId, @PathVariable UUID id,
+			@Valid @RequestBody PagamentoContaPedido pedido) {
+		return OcorrenciaResposta.de(servico.pagar(usuarioId, id, pedido.pagoEm(), pedido.valorPago()));
+	}
+
+	/** HU-13.3: volta a ficar a pagar; débito automático desfeito não é marcado de novo (RN-24). */
+	@DeleteMapping("/ocorrencias/{id}/pagamento")
+	public OcorrenciaResposta desfazerPagamento(@UsuarioLogado UUID usuarioId, @PathVariable UUID id) {
+		return OcorrenciaResposta.de(servico.desfazerPagamento(usuarioId, id));
 	}
 
 	/** HU-11.4. */

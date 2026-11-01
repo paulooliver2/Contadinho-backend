@@ -489,6 +489,68 @@
         }
       }
     },
+    "/api/contas-fixas/ocorrencias/{id}/pagamento" : {
+      "post" : {
+        "tags" : [ "contas-fixas-controller" ],
+        "operationId" : "pagar",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PagamentoContaPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OcorrenciaResposta"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "contas-fixas-controller" ],
+        "operationId" : "desfazerPagamento",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/OcorrenciaResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/cartoes" : {
       "get" : {
         "tags" : [ "cartoes-controller" ],
@@ -1366,6 +1428,56 @@
         },
         "required" : [ "numero", "valor" ]
       },
+      "PagamentoContaPedido" : {
+        "type" : "object",
+        "properties" : {
+          "pagoEm" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "valorPago" : {
+            "type" : "number",
+            "minimum" : 0.01
+          }
+        }
+      },
+      "OcorrenciaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "conta" : {
+            "$ref" : "#/components/schemas/ContaFixaResposta"
+          },
+          "valorAtual" : {
+            "type" : "number"
+          },
+          "vencimento" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "valorPrevisto" : {
+            "type" : "number"
+          },
+          "valorPago" : {
+            "type" : "number"
+          },
+          "pagoEm" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "status" : {
+            "type" : "string",
+            "enum" : [ "A_PAGAR", "PAGA", "AGUARDANDO_FATURA", "NA_FATURA" ]
+          }
+        },
+        "required" : [ "conta", "id", "status", "valor", "valorAtual", "valorPrevisto", "vencimento" ]
+      },
       "NovoCartaoPedido" : {
         "type" : "object",
         "properties" : {
@@ -1885,33 +1997,6 @@
           }
         },
         "required" : [ "aPagar", "contas", "noCartao", "pago", "total" ]
-      },
-      "OcorrenciaResposta" : {
-        "type" : "object",
-        "properties" : {
-          "id" : {
-            "type" : "string",
-            "format" : "uuid"
-          },
-          "conta" : {
-            "$ref" : "#/components/schemas/ContaFixaResposta"
-          },
-          "valorAtual" : {
-            "type" : "number"
-          },
-          "vencimento" : {
-            "type" : "string",
-            "format" : "date"
-          },
-          "valor" : {
-            "type" : "number"
-          },
-          "status" : {
-            "type" : "string",
-            "enum" : [ "A_PAGAR", "PAGA", "AGUARDANDO_FATURA", "NA_FATURA" ]
-          }
-        },
-        "required" : [ "conta", "id", "status", "valor", "valorAtual", "vencimento" ]
       },
       "Conta" : {
         "type" : "object",

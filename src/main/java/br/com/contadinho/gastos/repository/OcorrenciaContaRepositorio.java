@@ -3,6 +3,7 @@ package br.com.contadinho.gastos.repository;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import br.com.contadinho.gastos.domain.OcorrenciaConta;
@@ -13,6 +14,8 @@ import org.springframework.data.jpa.repository.Query;
 
 /** Toda consulta recebe o usuário dono (RNF-01). */
 public interface OcorrenciaContaRepositorio extends JpaRepository<OcorrenciaConta, UUID> {
+
+	Optional<OcorrenciaConta> findByIdAndUsuarioId(UUID id, UUID usuarioId);
 
 	List<OcorrenciaConta> findByUsuarioIdAndCompetencia(UUID usuarioId, LocalDate competencia);
 
