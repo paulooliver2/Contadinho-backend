@@ -1477,6 +1477,27 @@
         }
       }
     },
+    "/api/avisos/agenda" : {
+      "get" : {
+        "tags" : [ "avisos-controller" ],
+        "operationId" : "agenda",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/AvisoResposta"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/receber/pagamentos/{id}" : {
       "delete" : {
         "tags" : [ "receber-controller" ],
@@ -3015,6 +3036,36 @@
           }
         },
         "required" : [ "codigo", "modelo", "nome" ]
+      },
+      "AvisoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "chave" : {
+            "type" : "string"
+          },
+          "tipo" : {
+            "type" : "string",
+            "enum" : [ "CONTA_ANTES", "CONTA_NO_DIA" ]
+          },
+          "quando" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "titulo" : {
+            "type" : "string"
+          },
+          "texto" : {
+            "type" : "string"
+          },
+          "ocorrenciaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "mes" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "chave", "mes", "ocorrenciaId", "quando", "texto", "tipo", "titulo" ]
       }
     },
     "securitySchemes" : {

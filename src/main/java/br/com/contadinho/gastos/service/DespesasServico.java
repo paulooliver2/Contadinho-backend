@@ -4,11 +4,14 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 
 import br.com.contadinho.gastos.Despesas;
+import br.com.contadinho.gastos.domain.ContaFixa;
 import br.com.contadinho.gastos.domain.OcorrenciaConta;
 
 import org.springframework.stereotype.Service;
@@ -67,6 +70,23 @@ public class DespesasServico implements Despesas {
 					c.valor()))
 			.toList();
 		return new ContasAVencer(fixosPorMes, proximas);
+	}
+
+	@Override
+	@Transactional
+	public List<ContaParaAvisar> aPagarAte(UUID usuarioId, LocalDate ate) {
+		var hoje = LocalDate.now(clock);
+		var lista = new ArrayList<ContaParaAvisar>();
+		for (var mes = YearMonth.from(hoje); !mes.isAfter(YearMonth.from(ate)); mes = mes.plusMonths(1)) {
+			for (var c : contas.doMes(usuarioId, mes)) {
+				var vencimento = c.ocorrencia().getVencimento();
+				if (c.status() == OcorrenciaConta.Status.A_PAGAR && !vencimento.isBefore(hoje) && !vencimento.isAfter(ate)) {
+					lista.add(new ContaParaAvisar(c.ocorrencia().getId(), c.conta().getDescricao(), vencimento, c.valor(),
+							c.conta().getFormaPagamento() == ContaFixa.FormaPagamento.DEBITO_AUTOMATICO));
+				}
+			}
+		}
+		return lista;
 	}
 
 }

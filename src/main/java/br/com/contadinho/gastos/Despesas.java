@@ -40,4 +40,15 @@ public interface Despesas {
 	record ContaAVencer(UUID ocorrenciaId, String descricao, LocalDate vencimento, BigDecimal valor) {
 	}
 
+	/**
+	 * HU-26: as contas fixas fora do cartão ainda a pagar que vencem de hoje até {@code ate}, pelo vencimento. Cria as
+	 * ocorrências que faltam nesses meses.
+	 */
+	List<ContaParaAvisar> aPagarAte(UUID usuarioId, LocalDate ate);
+
+	/** {@code debitoAutomatico}: o banco paga sozinho no vencimento, então não há aviso no dia. */
+	record ContaParaAvisar(UUID ocorrenciaId, String descricao, LocalDate vencimento, BigDecimal valor,
+			boolean debitoAutomatico) {
+	}
+
 }
