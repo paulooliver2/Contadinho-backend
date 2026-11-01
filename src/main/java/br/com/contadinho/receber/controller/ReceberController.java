@@ -1,6 +1,7 @@
 package br.com.contadinho.receber.controller;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -24,7 +25,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * A receber: quanto cada pessoa deve, o histórico dela (HU-18) e os pagamentos recebidos (HU-19).
+ * A receber: quanto cada pessoa deve, o histórico dela (HU-18), os pagamentos recebidos (HU-19) e as cobranças
+ * (HU-20).
  */
 @RestController
 @RequestMapping("/api/receber")
@@ -44,11 +46,13 @@ public class ReceberController {
 			@NotNull BigDecimal recebido,
 			@NotNull ReceberServico.Status status,
 			/** Do recebível em aberto que vence primeiro; sem nada em aberto, não vem. */
-			LocalDate proximoVencimento) {
+			LocalDate proximoVencimento,
+			/** Quando a última cobrança foi aberta no WhatsApp (HU-20.4); sem cobrança, não vem. */
+			Instant ultimaCobranca) {
 
 		public static SituacaoResposta de(ReceberServico.Situacao s) {
 			return new SituacaoResposta(s.pessoaId(), s.saldo(), s.original(), s.recebido(), s.status(),
-					s.proximoVencimento());
+					s.proximoVencimento(), s.ultimaCobranca());
 		}
 	}
 
@@ -149,6 +153,20 @@ public class ReceberController {
 	public PagamentoResposta registrar(@UsuarioLogado UUID usuarioId, @PathVariable UUID pessoaId,
 			@Valid @RequestBody PagamentoPedido pedido) {
 		return PagamentoResposta.de(servico.registrar(usuarioId, pessoaId, pedido.valor(), pedido.recebidoEm()));
+	}
+
+	public record CobrancaResposta(@NotNull BigDecimal valor, @NotNull Instant enviadaEm) {
+	}
+
+	/**
+	 * HU-20.4: o app chama quando abre a conversa no WhatsApp com a mensagem pronta; o envio é do dono (RN-34). Sem
+	 * saldo é 409.
+	 */
+	@PostMapping("/pessoas/{pessoaId}/cobrancas")
+	@ResponseStatus(HttpStatus.CREATED)
+	public CobrancaResposta cobrar(@UsuarioLogado UUID usuarioId, @PathVariable UUID pessoaId) {
+		var cobranca = servico.cobrar(usuarioId, pessoaId);
+		return new CobrancaResposta(cobranca.getValor(), cobranca.getEnviadaEm());
 	}
 
 	/** HU-19.3. */

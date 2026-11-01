@@ -17,9 +17,11 @@ import java.util.stream.Stream;
 import br.com.contadinho.cartoes.Compras;
 import br.com.contadinho.comum.ErroApi;
 import br.com.contadinho.pessoas.Pessoas;
+import br.com.contadinho.receber.domain.Cobranca;
 import br.com.contadinho.receber.domain.Emprestimo;
 import br.com.contadinho.receber.domain.Pagamento;
 import br.com.contadinho.receber.domain.Recebivel;
+import br.com.contadinho.receber.repository.CobrancaRepositorio;
 import br.com.contadinho.receber.repository.EmprestimoRepositorio;
 import br.com.contadinho.receber.repository.PagamentoRepositorio;
 import br.com.contadinho.receber.repository.RecebivelRepositorio;
@@ -29,7 +31,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Quanto cada pessoa deve, de compras e empréstimos (HU-18), e o que ela já devolveu (HU-19). Nada é guardado: tudo sai dos recebíveis e dos
+ * Quanto cada pessoa deve, de compras e empréstimos (HU-18), o que ela já devolveu (HU-19) e quando foi cobrada
+ * (HU-20). Nada é guardado: tudo sai dos recebíveis e dos
  * pagamentos não desfeitos (RN-39).
  */
 @Service
@@ -52,6 +55,8 @@ public class ReceberServico {
 
 	private final EmprestimoRepositorio emprestimos;
 
+	private final CobrancaRepositorio cobrancas;
+
 	private final Compras compras;
 
 	private final Pessoas pessoas;
@@ -59,10 +64,12 @@ public class ReceberServico {
 	private final Clock clock;
 
 	public ReceberServico(RecebivelRepositorio recebiveis, PagamentoRepositorio pagamentos,
-			EmprestimoRepositorio emprestimos, Compras compras, Pessoas pessoas, Clock clock) {
+			EmprestimoRepositorio emprestimos, CobrancaRepositorio cobrancas, Compras compras, Pessoas pessoas,
+			Clock clock) {
 		this.recebiveis = recebiveis;
 		this.pagamentos = pagamentos;
 		this.emprestimos = emprestimos;
+		this.cobrancas = cobrancas;
 		this.compras = compras;
 		this.pessoas = pessoas;
 		this.clock = clock;
@@ -74,10 +81,15 @@ public class ReceberServico {
 
 	/**
 	 * RN-29. {@code proximoVencimento}: o do recebível ainda em aberto que vence primeiro, depois de abater os
-	 * pagamentos (RN-30); null quando não há nada a receber ou só "Sem data" (RN-32).
+	 * pagamentos (RN-30); null quando não há nada a receber ou só "Sem data" (RN-32). {@code ultimaCobranca}: quando
+	 * o dono abriu a última cobrança no WhatsApp (HU-20.4); null se nunca cobrou.
 	 */
 	public record Situacao(UUID pessoaId, BigDecimal original, BigDecimal recebido, BigDecimal saldo, Status status,
-			LocalDate proximoVencimento) {
+			LocalDate proximoVencimento, Instant ultimaCobranca) {
+
+		Situacao cobradaEm(Instant quando) {
+			return new Situacao(pessoaId, original, recebido, saldo, status, proximoVencimento, quando);
+		}
 	}
 
 	public record Resumo(BigDecimal aReceber, BigDecimal recebido, List<Situacao> pessoas) {
@@ -104,10 +116,13 @@ public class ReceberServico {
 			.collect(Collectors.groupingBy(Recebivel::getPessoaId));
 		var pagamentosPorPessoa = pagamentos.findByUsuarioIdAndDesfeitoEmIsNull(usuarioId).stream()
 			.collect(Collectors.groupingBy(Pagamento::getPessoaId));
+		var cobradas = cobrancas.ultimas(usuarioId).stream()
+			.collect(Collectors.toMap(CobrancaRepositorio.Ultima::getPessoaId, CobrancaRepositorio.Ultima::getEnviadaEm));
 		var situacoes = Stream.concat(recebiveisPorPessoa.keySet().stream(), pagamentosPorPessoa.keySet().stream())
 			.distinct()
 			.map(p -> situacao(p, recebiveisPorPessoa.getOrDefault(p, List.of()),
-					pagamentosPorPessoa.getOrDefault(p, List.of())))
+					pagamentosPorPessoa.getOrDefault(p, List.of()))
+				.cobradaEm(cobradas.get(p)))
 			.sorted(Comparator.comparing(Situacao::proximoVencimento, Comparator.nullsLast(Comparator.naturalOrder()))
 				.thenComparing(Situacao::saldo, Comparator.reverseOrder()))
 			.toList();
@@ -140,7 +155,10 @@ public class ReceberServico {
 				.map(r -> new ParcelaDaPessoa(r.getParcela(), r.getValor(), r.getVencimento(), aberto.get(r.getId())))
 				.toList()))
 			.toList();
-		return new Historico(situacao(pessoaId, daPessoa, pagos), lista, deEmprestimos, pagos);
+		var cobrada = cobrancas.findFirstByUsuarioIdAndPessoaIdOrderByEnviadaEmDesc(usuarioId, pessoaId)
+			.map(Cobranca::getEnviadaEm)
+			.orElse(null);
+		return new Historico(situacao(pessoaId, daPessoa, pagos).cobradaEm(cobrada), lista, deEmprestimos, pagos);
 	}
 
 	/** HU-19.1 e RN-30: parcial ou o saldo inteiro, nunca mais que ele (HU-19.4). */
@@ -161,6 +179,20 @@ public class ReceberServico {
 			throw ErroApi.campos(Map.of("valor", MAIOR_QUE_O_DEVIDO));
 		}
 		return pagamentos.save(new Pagamento(usuarioId, pessoaId, valor, data, Instant.now(clock)));
+	}
+
+	/**
+	 * HU-20.4: o dono abriu a cobrança no WhatsApp. Guarda o saldo daquele momento; sem saldo, não há o que cobrar.
+	 */
+	@Transactional
+	public Cobranca cobrar(UUID usuarioId, UUID pessoaId) {
+		existe(usuarioId, pessoaId);
+		var saldo = situacao(pessoaId, recebiveis.findByUsuarioIdAndPessoaId(usuarioId, pessoaId),
+				pagamentosDa(usuarioId, pessoaId)).saldo();
+		if (saldo.signum() <= 0) {
+			throw new ErroApi(HttpStatus.CONFLICT, SEM_SALDO);
+		}
+		return cobrancas.save(new Cobranca(usuarioId, pessoaId, saldo, Instant.now(clock)));
 	}
 
 	/** HU-19.3: o pagamento sai do saldo e os abatimentos são refeitos no próximo cálculo. */
@@ -200,7 +232,7 @@ public class ReceberServico {
 			.filter(Objects::nonNull)
 			.min(Comparator.naturalOrder())
 			.orElse(null);
-		return new Situacao(pessoaId, original, recebido, saldo, status, proximo);
+		return new Situacao(pessoaId, original, recebido, saldo, status, proximo, null);
 	}
 
 	/**

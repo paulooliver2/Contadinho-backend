@@ -158,6 +158,43 @@
         }
       }
     },
+    "/api/conta/pix" : {
+      "put" : {
+        "tags" : [ "conta-controller" ],
+        "operationId" : "definirPix",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/PixPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Pix"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "conta-controller" ],
+        "operationId" : "removerPix",
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
     "/api/receber/pessoas/{pessoaId}/pagamentos" : {
       "post" : {
         "tags" : [ "receber-controller" ],
@@ -188,6 +225,33 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/PagamentoResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/receber/pessoas/{pessoaId}/cobrancas" : {
+      "post" : {
+        "tags" : [ "receber-controller" ],
+        "operationId" : "cobrar",
+        "parameters" : [ {
+          "name" : "pessoaId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/CobrancaResposta"
                 }
               }
             }
@@ -949,6 +1013,34 @@
         },
         "required" : [ "lancamento", "proximas" ]
       },
+      "PixPedido" : {
+        "type" : "object",
+        "properties" : {
+          "tipo" : {
+            "type" : "string",
+            "enum" : [ "CPF", "EMAIL", "CELULAR", "ALEATORIA" ]
+          },
+          "chave" : {
+            "type" : "string",
+            "maxLength" : 100,
+            "minLength" : 0
+          }
+        },
+        "required" : [ "chave", "tipo" ]
+      },
+      "Pix" : {
+        "type" : "object",
+        "properties" : {
+          "tipo" : {
+            "type" : "string",
+            "enum" : [ "CPF", "EMAIL", "CELULAR", "ALEATORIA" ]
+          },
+          "chave" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "chave", "tipo" ]
+      },
       "PagamentoPedido" : {
         "type" : "object",
         "properties" : {
@@ -979,6 +1071,19 @@
           }
         },
         "required" : [ "id", "recebidoEm", "valor" ]
+      },
+      "CobrancaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "valor" : {
+            "type" : "number"
+          },
+          "enviadaEm" : {
+            "type" : "string",
+            "format" : "date-time"
+          }
+        },
+        "required" : [ "enviadaEm", "valor" ]
       },
       "EmprestimoPedido" : {
         "type" : "object",
@@ -1432,6 +1537,10 @@
           "proximoVencimento" : {
             "type" : "string",
             "format" : "date"
+          },
+          "ultimaCobranca" : {
+            "type" : "string",
+            "format" : "date-time"
           }
         },
         "required" : [ "original", "pessoaId", "recebido", "saldo", "status" ]
@@ -1554,6 +1663,9 @@
           },
           "email" : {
             "type" : "string"
+          },
+          "pix" : {
+            "$ref" : "#/components/schemas/Pix"
           }
         },
         "required" : [ "email", "id", "nome" ]
