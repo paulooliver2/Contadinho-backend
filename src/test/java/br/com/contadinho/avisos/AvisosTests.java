@@ -83,8 +83,40 @@ class AvisosTests {
 		return resposta.lista();
 	}
 
-	private static List<Map<String, Object>> da(List<Map<String, Object>> agenda, String ocorrenciaId) {
-		return agenda.stream().filter(a -> ocorrenciaId.equals(a.get("ocorrenciaId"))).toList();
+	@SuppressWarnings("unchecked")
+	private static Map<String, Object> destino(Map<String, Object> aviso) {
+		return (Map<String, Object>) aviso.get("destino");
+	}
+
+	/** Os avisos que abrem esta conta, cartão ou pessoa. */
+	private static List<Map<String, Object>> da(List<Map<String, Object>> agenda, String id) {
+		return agenda.stream().filter(a -> id.equals(destino(a).get("id"))).toList();
+	}
+
+	private static List<Map<String, Object>> doTipo(List<Map<String, Object>> agenda, String tipo) {
+		return agenda.stream().filter(a -> tipo.equals(a.get("tipo"))).toList();
+	}
+
+	private String cartao(String ultimos4) {
+		return api.post("/api/cartoes", Map.of("banco", "INTER", "ultimos4", ultimos4, "diaFechamento", 20,
+				"diaVencimento", 28), dono).texto("id");
+	}
+
+	private void compra(String cartaoId, YearMonth fatura, double valor, String pessoaId) {
+		var corpo = Map.<String, Object>of("data", fatura.minusMonths(1).atDay(5).toString(), "descricao", "Compra",
+				"valor", valor);
+		var id = api.post("/api/cartoes/" + cartaoId + "/faturas/" + fatura + "/lancamentos", corpo, dono).texto("id");
+		var responsavel = new HashMap<String, Object>(Map.of("pessoaId", pessoaId, "proximas", false));
+		assertThat(api.put("/api/lancamentos/" + id + "/responsavel", responsavel, dono).status()).isEqualTo(200);
+	}
+
+	private String pessoa(String nome) {
+		return api.post("/api/pessoas", Map.of("nome", nome), dono).texto("id");
+	}
+
+	private void pagar(String pessoaId, double valor) {
+		assertThat(api.post("/api/receber/pessoas/" + pessoaId + "/pagamentos", Map.of("valor", valor), dono).status())
+			.isEqualTo(201);
 	}
 
 	private static LocalDateTime nove(LocalDate dia) {
@@ -104,8 +136,8 @@ class AvisosTests {
 				.containsEntry("quando", nove(vencimento.minusDays(2)).toString() + ":00")
 				.containsEntry("titulo", "Luz vence em 2 dias")
 				.containsEntry("texto", "R$ 130,00 · toque para marcar como paga.")
-				.containsEntry("mes", ATUAL.plusMonths(1).toString())
-				.containsEntry("chave", "conta-antes:" + proxima));
+				.containsEntry("chave", "conta-antes:" + proxima)
+				.containsEntry("destino", Map.of("tela", "CONTA", "id", proxima, "mes", ATUAL.plusMonths(1).toString())));
 		// Só o que ainda vai acontecer, nos próximos 60 dias, do mais próximo para o mais distante.
 		var agora = LocalDateTime.now(FUSO);
 		var quandos = agenda.stream().map(a -> LocalDateTime.parse((String) a.get("quando"))).toList();
@@ -136,6 +168,48 @@ class AvisosTests {
 		assertThat(aguaProxima).extracting(a -> a.get("tipo")).containsExactly("CONTA_ANTES");
 		assertThat(aguaProxima.get(0)).containsEntry("titulo", "Água: débito automático em 2 dias")
 			.containsEntry("texto", "Deixe R$ 80,00 na conta para o débito.");
+	}
+
+	@Test
+	void faturaFechouEQuemAindaDeve() {
+		// A fatura do próximo mês fecha no dia 20 e vence no 28: as duas datas ainda vão chegar.
+		var mes = ATUAL.plusMonths(1);
+		var inter = cartao("9453");
+		var nubank = cartao("1234");
+		var lucas = pessoa("Lucas");
+		var ana = pessoa("Ana");
+		compra(inter, mes, 120, lucas);
+		compra(inter, mes, 80, ana);
+		pagar(ana, 30);
+
+		var agenda = agenda(dono);
+
+		var fechou = doTipo(da(agenda, inter), "FATURA_FECHOU").stream()
+			.filter(a -> mes.toString().equals(destino(a).get("mes")))
+			.findFirst()
+			.orElseThrow();
+		assertThat(fechou).containsEntry("titulo", "Fatura Inter •• 9453 fechou")
+			.containsEntry("texto", "Importe o arquivo do banco para dividir as compras.")
+			.containsEntry("quando", nove(mes.atDay(21)) + ":00")
+			.containsEntry("chave", "fatura-fechou:" + inter + ":" + mes);
+		assertThat(doTipo(agenda, "FATURA_A_RECEBER")).singleElement()
+			.satisfies(a -> assertThat(a).containsEntry("titulo", "Fatura Inter •• 9453 vence em 3 dias")
+				.containsEntry("texto", "Faltam R$ 170,00 de Lucas e Ana.")
+				.containsEntry("acao", "Cobrar")
+				.containsEntry("quando", nove(mes.atDay(25)) + ":00")
+				.satisfies(x -> assertThat(destino(x)).containsEntry("tela", "RECEBER").containsEntry("id", null)));
+		// Sem ninguém devendo, o Nubank só lembra de importar.
+		assertThat(da(agenda, nubank)).extracting(a -> a.get("tipo")).containsOnly("FATURA_FECHOU");
+
+		pagar(lucas, 120);
+
+		assertThat(doTipo(agenda(dono), "FATURA_A_RECEBER")).singleElement()
+			.satisfies(a -> assertThat(a).containsEntry("texto", "Faltam R$ 50,00 de Ana.")
+				.satisfies(x -> assertThat(destino(x)).containsEntry("tela", "PESSOA").containsEntry("id", ana)));
+
+		pagar(ana, 50);
+
+		assertThat(doTipo(agenda(dono), "FATURA_A_RECEBER")).isEmpty();
 	}
 
 	@Test

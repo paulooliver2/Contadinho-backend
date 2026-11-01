@@ -1,5 +1,6 @@
 package br.com.contadinho.pessoas.repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -16,5 +17,7 @@ public interface PessoaRepositorio extends JpaRepository<Pessoa, UUID> {
 	List<Pessoa> findByUsuarioIdAndArquivadaEmIsNotNullOrderByNome(UUID usuarioId);
 
 	Optional<Pessoa> findByIdAndUsuarioId(UUID id, UUID usuarioId);
+
+	List<Pessoa> findByUsuarioIdAndIdIn(UUID usuarioId, Collection<UUID> ids);
 
 }

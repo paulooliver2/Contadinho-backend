@@ -2,10 +2,12 @@ package br.com.contadinho.pessoas.service;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import br.com.contadinho.comum.ErroApi;
 import br.com.contadinho.pessoas.Pessoas;
@@ -56,6 +58,13 @@ public class PessoaServico implements Pessoas {
 	@Transactional(readOnly = true)
 	public boolean existe(UUID usuarioId, UUID pessoaId) {
 		return pessoas.findByIdAndUsuarioId(pessoaId, usuarioId).isPresent();
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public Map<UUID, String> rotulos(UUID usuarioId, Collection<UUID> pessoaIds) {
+		return pessoas.findByUsuarioIdAndIdIn(usuarioId, pessoaIds).stream()
+			.collect(Collectors.toMap(Pessoa::getId, p -> p.getApelido() != null ? p.getApelido() : p.getNome()));
 	}
 
 	public List<Pessoa> listar(UUID usuarioId, boolean arquivadas) {

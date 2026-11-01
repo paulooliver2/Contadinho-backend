@@ -37,4 +37,11 @@ public interface Faturas {
 	record Parte(UUID pessoaId, BigDecimal total) {
 	}
 
+	/** HU-27: as faturas dos cartões ativos que fecham ou vencem entre {@code de} e {@code ate}. */
+	List<CicloDoCartao> ciclos(UUID usuarioId, LocalDate de, LocalDate ate);
+
+	/** O último dia de compras é o {@code fechamento}; no dia seguinte a fatura está fechada (RN-58). */
+	record CicloDoCartao(UUID cartaoId, String cartao, YearMonth mes, LocalDate fechamento, LocalDate vencimento) {
+	}
+
 }

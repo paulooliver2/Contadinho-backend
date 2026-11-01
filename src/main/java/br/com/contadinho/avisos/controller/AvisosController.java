@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Os avisos que o aparelho agenda (HU-26, HU-29). */
+/** Os avisos que o aparelho agenda (HU-26, HU-27, HU-29). */
 @RestController
 @RequestMapping("/api/avisos")
 public class AvisosController {
@@ -23,6 +23,14 @@ public class AvisosController {
 		this.servico = servico;
 	}
 
+	public record DestinoResposta(
+			@NotNull AgendaServico.Tela tela,
+			/** A ocorrência (CONTA), o cartão (FATURA) ou a pessoa (PESSOA). */
+			UUID id,
+			/** O mês da conta ou da fatura, como 2026-11. */
+			String mes) {
+	}
+
 	public record AvisoResposta(
 			/** Estável entre reagendamentos. */
 			@NotNull String chave,
@@ -31,14 +39,15 @@ public class AvisosController {
 			@NotNull LocalDateTime quando,
 			@NotNull String titulo,
 			@NotNull String texto,
-			/** A conta do mês que o aviso abre ao ser tocado. */
-			@NotNull UUID ocorrenciaId,
-			/** O mês dessa conta, como 2026-11. */
-			@NotNull String mes) {
+			/** O botão do aviso, como "Cobrar"; sem botão, não vem. */
+			String acao,
+			/** O que o toque abre. */
+			@NotNull DestinoResposta destino) {
 
 		static AvisoResposta de(AgendaServico.Aviso a) {
-			return new AvisoResposta(a.chave(), a.tipo(), a.quando(), a.titulo(), a.texto(), a.ocorrenciaId(),
-					a.mes().toString());
+			var d = a.destino();
+			return new AvisoResposta(a.chave(), a.tipo(), a.quando(), a.titulo(), a.texto(), a.acao(),
+					new DestinoResposta(d.tela(), d.id(), d.mes() == null ? null : d.mes().toString()));
 		}
 	}
 

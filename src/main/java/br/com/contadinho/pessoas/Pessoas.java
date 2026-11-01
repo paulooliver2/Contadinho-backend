@@ -1,5 +1,7 @@
 package br.com.contadinho.pessoas;
 
+import java.util.Collection;
+import java.util.Map;
 import java.util.UUID;
 
 /**
@@ -12,5 +14,8 @@ public interface Pessoas {
 
 	/** A pessoa é do dono, arquivada ou não (RNF-01). */
 	boolean existe(UUID usuarioId, UUID pessoaId);
+
+	/** Como cada pessoa do dono aparece em textos curtos, como um aviso: o apelido, ou o nome. */
+	Map<UUID, String> rotulos(UUID usuarioId, Collection<UUID> pessoaIds);
 
 }

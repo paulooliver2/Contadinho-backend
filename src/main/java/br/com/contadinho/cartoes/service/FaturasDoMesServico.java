@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
@@ -75,6 +76,25 @@ public class FaturasDoMesServico implements Faturas {
 			return new FaturaAtual(cartao.getId(), nome(cartao), mes, vista.ciclo().vencimento(), !vista.aberta(),
 					vista.total(), vista.partes().stream().map(p -> new Parte(p.pessoaId(), p.total())).toList());
 		}).toList();
+	}
+
+	@Override
+	public List<CicloDoCartao> ciclos(UUID usuarioId, LocalDate de, LocalDate ate) {
+		var lista = new ArrayList<CicloDoCartao>();
+		for (var cartao : cartoes.findByUsuarioIdAndEncerradoEmIsNullOrderByCriadoEm(usuarioId)) {
+			// O fechamento pode cair no mês anterior ao do vencimento: começa um mês antes.
+			for (var mes = YearMonth.from(de); !mes.isAfter(YearMonth.from(ate).plusMonths(1)); mes = mes.plusMonths(1)) {
+				var ciclo = fatura.ciclo(cartao, mes);
+				if (dentro(ciclo.fechamento(), de, ate) || dentro(ciclo.vencimento(), de, ate)) {
+					lista.add(new CicloDoCartao(cartao.getId(), nome(cartao), mes, ciclo.fechamento(), ciclo.vencimento()));
+				}
+			}
+		}
+		return lista;
+	}
+
+	private static boolean dentro(LocalDate dia, LocalDate de, LocalDate ate) {
+		return !dia.isBefore(de) && !dia.isAfter(ate);
 	}
 
 	private static String nome(Cartao cartao) {

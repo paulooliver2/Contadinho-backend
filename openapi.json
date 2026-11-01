@@ -3045,7 +3045,7 @@
           },
           "tipo" : {
             "type" : "string",
-            "enum" : [ "CONTA_ANTES", "CONTA_NO_DIA" ]
+            "enum" : [ "CONTA_ANTES", "CONTA_NO_DIA", "FATURA_FECHOU", "FATURA_A_RECEBER" ]
           },
           "quando" : {
             "type" : "string",
@@ -3057,7 +3057,23 @@
           "texto" : {
             "type" : "string"
           },
-          "ocorrenciaId" : {
+          "acao" : {
+            "type" : "string"
+          },
+          "destino" : {
+            "$ref" : "#/components/schemas/DestinoResposta"
+          }
+        },
+        "required" : [ "chave", "destino", "quando", "texto", "tipo", "titulo" ]
+      },
+      "DestinoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "tela" : {
+            "type" : "string",
+            "enum" : [ "CONTA", "FATURA", "PESSOA", "RECEBER" ]
+          },
+          "id" : {
             "type" : "string",
             "format" : "uuid"
           },
@@ -3065,7 +3081,7 @@
             "type" : "string"
           }
         },
-        "required" : [ "chave", "mes", "ocorrenciaId", "quando", "texto", "tipo", "titulo" ]
+        "required" : [ "tela" ]
       }
     },
     "securitySchemes" : {
