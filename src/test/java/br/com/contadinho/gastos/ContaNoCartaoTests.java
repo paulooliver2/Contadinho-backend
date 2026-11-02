@@ -133,6 +133,20 @@ class ContaNoCartaoTests {
 	}
 
 	@Test
+	void desfazerAImportacaoSoltaAConta() {
+		conta("Netflix", 55.90, "CARTAO", cartao);
+		importar(new Object[] { "n1", -2, "56.50", "NETFLIX.COM" });
+		assertThat(doMes("Netflix")).containsEntry("status", "NA_FATURA");
+		var importacao = jdbc.queryForObject("select importacao_id::text from lancamento where id = ?::uuid",
+				String.class, lancamento("n1"));
+
+		assertThat(api.delete("/api/importacoes/" + importacao, dono).status()).isEqualTo(200);
+
+		// HU-44.3: a conta volta a aguardar a fatura, com o valor previsto.
+		assertThat(doMes("Netflix")).containsEntry("status", "AGUARDANDO_FATURA").containsEntry("valor", 55.9);
+	}
+
+	@Test
 	void umaCompraPagaUmaContaSo() {
 		conta("Academia", 99.90, "CARTAO", cartao);
 		conta("Academia da filha", 99.90, "CARTAO", cartao);

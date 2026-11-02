@@ -1,6 +1,7 @@
 package br.com.contadinho.cartoes.controller;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.YearMonth;
 import java.util.List;
@@ -100,7 +101,14 @@ public class FaturasController {
 			@NotNull BigDecimal total,
 			/** HU-10: a soma das partes é sempre o total. */
 			@NotNull List<ParteResposta> partes,
-			@NotNull List<LancamentoResposta> lancamentos) {
+			@NotNull List<LancamentoResposta> lancamentos,
+			/** HU-44: da primeira para a última. */
+			@NotNull List<ImportacaoDaFatura> importacoes) {
+	}
+
+	/** {@code compras}: as da fatura que vieram deste arquivo (HU-44). */
+	public record ImportacaoDaFatura(@NotNull UUID id, @NotNull String nomeArquivo, @NotNull String formato,
+			@NotNull Instant importadaEm, @NotNull Integer compras) {
 	}
 
 	/** Sem {@code pessoaId}, é a parte do dono (RN-15). */
@@ -114,7 +122,12 @@ public class FaturasController {
 		return new FaturaResposta(ciclo.mes().toString(), ciclo.fechamento(), ciclo.vencimento(), vista.aberta(),
 				vista.total(),
 				vista.partes().stream().map(p -> new ParteResposta(p.pessoaId(), p.total(), p.quantidade())).toList(),
-				vista.lancamentos().stream().map(LancamentoResposta::de).toList());
+				vista.lancamentos().stream().map(LancamentoResposta::de).toList(),
+				vista.importacoes().stream().map(i -> new ImportacaoDaFatura(i.getId(), i.getNomeArquivo(), i.getFormato(),
+						i.getImportadaEm(), (int) vista.lancamentos().stream()
+							.filter(l -> i.getId().equals(l.getImportacaoId()))
+							.count()))
+					.toList());
 	}
 
 	@PostMapping("/api/cartoes/{cartaoId}/faturas/{mes}/lancamentos")

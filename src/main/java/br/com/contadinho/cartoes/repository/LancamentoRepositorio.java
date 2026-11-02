@@ -16,6 +16,11 @@ public interface LancamentoRepositorio extends JpaRepository<Lancamento, UUID> {
 
 	List<Lancamento> findByFaturaIdOrderByDataDescDescricao(UUID faturaId);
 
+	/** HU-44: o que uma importação gravou ou casou. */
+	List<Lancamento> findByImportacaoId(UUID importacaoId);
+
+	boolean existsByFaturaId(UUID faturaId);
+
 	List<Lancamento> findByFaturaIdIn(Collection<UUID> faturaIds);
 
 	Optional<Lancamento> findByIdAndUsuarioId(UUID id, UUID usuarioId);

@@ -1420,6 +1420,33 @@
         }
       }
     },
+    "/api/importacoes/{id}/desfazer" : {
+      "get" : {
+        "tags" : [ "importacoes-controller" ],
+        "operationId" : "previaDesfazer",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DesfazerResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/gastos/mes/{mes}" : {
       "get" : {
         "tags" : [ "gastos-controller" ],
@@ -1653,6 +1680,33 @@
         "responses" : {
           "204" : {
             "description" : "No Content"
+          }
+        }
+      }
+    },
+    "/api/importacoes/{id}" : {
+      "delete" : {
+        "tags" : [ "importacoes-controller" ],
+        "operationId" : "desfazer_2",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/DesfazerResposta"
+                }
+              }
+            }
           }
         }
       }
@@ -3101,6 +3155,53 @@
         },
         "required" : [ "emAberto", "numero", "valor" ]
       },
+      "DesfazerResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "nomeArquivo" : {
+            "type" : "string"
+          },
+          "importadaEm" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "mes" : {
+            "type" : "string"
+          },
+          "removidas" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "voltamADigitadas" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "pagos" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PagoResposta"
+            }
+          }
+        },
+        "required" : [ "id", "importadaEm", "mes", "nomeArquivo", "pagos", "removidas", "voltamADigitadas" ]
+      },
+      "PagoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "pessoaId" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "valor" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "pessoaId", "valor" ]
+      },
       "GastosDoMesResposta" : {
         "type" : "object",
         "properties" : {
@@ -3212,9 +3313,39 @@
             "items" : {
               "$ref" : "#/components/schemas/LancamentoResposta"
             }
+          },
+          "importacoes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/ImportacaoDaFatura"
+            }
           }
         },
-        "required" : [ "aberta", "fechamento", "lancamentos", "mes", "partes", "total", "vencimento" ]
+        "required" : [ "aberta", "fechamento", "importacoes", "lancamentos", "mes", "partes", "total", "vencimento" ]
+      },
+      "ImportacaoDaFatura" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "nomeArquivo" : {
+            "type" : "string"
+          },
+          "formato" : {
+            "type" : "string"
+          },
+          "importadaEm" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "compras" : {
+            "type" : "integer",
+            "format" : "int32"
+          }
+        },
+        "required" : [ "compras", "formato", "id", "importadaEm", "nomeArquivo" ]
       },
       "ParteResposta" : {
         "type" : "object",

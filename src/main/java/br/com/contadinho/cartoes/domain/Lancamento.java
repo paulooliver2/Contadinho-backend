@@ -61,6 +61,9 @@ public class Lancamento {
 	/** Responsável pela compra; null é o dono (RN-15). */
 	private UUID pessoaId;
 
+	/** Digitada e depois casada com a compra do arquivo (RN-59): desfeita a importação, volta a ser digitada (HU-44). */
+	private boolean digitadoAntes;
+
 	protected Lancamento() {
 	}
 
@@ -91,6 +94,7 @@ public class Lancamento {
 	 * responsável, categoria e essencial ficam como estavam.
 	 */
 	public void casar(UUID importacaoId, ArquivoFatura.Item item) {
+		this.digitadoAntes = this.origem == Origem.MANUAL;
 		this.origem = Origem.ARQUIVO;
 		this.importacaoId = importacaoId;
 		this.idExterno = item.idExterno();
@@ -101,6 +105,15 @@ public class Lancamento {
 			this.parcelaAtual = item.parcelaAtual().shortValue();
 			this.parcelaTotal = item.parcelaTotal().shortValue();
 		}
+	}
+
+	/** HU-44: a importação que a casou foi desfeita; fica a descrição do banco, e o responsável segue o mesmo. */
+	public void descasar() {
+		this.origem = Origem.MANUAL;
+		this.importacaoId = null;
+		this.idExterno = null;
+		this.finalCartao = null;
+		this.digitadoAntes = false;
 	}
 
 	/** RN-60: só a digitada pode mudar esses campos. */
@@ -140,6 +153,14 @@ public class Lancamento {
 
 	public UUID getFaturaId() {
 		return faturaId;
+	}
+
+	public UUID getImportacaoId() {
+		return importacaoId;
+	}
+
+	public boolean isDigitadoAntes() {
+		return digitadoAntes;
 	}
 
 	public String getIdExterno() {

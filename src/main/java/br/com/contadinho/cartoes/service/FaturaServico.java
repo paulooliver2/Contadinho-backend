@@ -14,9 +14,11 @@ import java.util.UUID;
 
 import br.com.contadinho.cartoes.domain.Cartao;
 import br.com.contadinho.cartoes.domain.Fatura;
+import br.com.contadinho.cartoes.domain.Importacao;
 import br.com.contadinho.cartoes.domain.Lancamento;
 import br.com.contadinho.cartoes.repository.CartaoRepositorio;
 import br.com.contadinho.cartoes.repository.FaturaRepositorio;
+import br.com.contadinho.cartoes.repository.ImportacaoRepositorio;
 import br.com.contadinho.cartoes.repository.LancamentoRepositorio;
 import br.com.contadinho.comum.ErroApi;
 
@@ -45,21 +47,26 @@ public class FaturaServico {
 
 	private final LancamentoRepositorio lancamentos;
 
+	private final ImportacaoRepositorio importacoes;
+
 	private final ResponsavelServico responsaveis;
 
 	private final Clock clock;
 
 	public FaturaServico(CartaoRepositorio cartoes, FaturaRepositorio faturas, LancamentoRepositorio lancamentos,
-			ResponsavelServico responsaveis, Clock clock) {
+			ImportacaoRepositorio importacoes, ResponsavelServico responsaveis, Clock clock) {
 		this.cartoes = cartoes;
 		this.faturas = faturas;
 		this.lancamentos = lancamentos;
+		this.importacoes = importacoes;
 		this.responsaveis = responsaveis;
 		this.clock = clock;
 	}
 
 	/** Uma fatura como o app mostra; sem lançamentos, as datas vêm do cálculo da RN-58. */
-	public record Vista(Cartao.Ciclo ciclo, boolean aberta, BigDecimal total, List<Parte> partes, List<Lancamento> lancamentos) {
+	/** {@code importacoes}: da primeira para a última, para poder desfazer uma (HU-44). */
+	public record Vista(Cartao.Ciclo ciclo, boolean aberta, BigDecimal total, List<Parte> partes, List<Lancamento> lancamentos,
+			List<Importacao> importacoes) {
 	}
 
 	/** HU-10: quanto da fatura é de cada responsável; {@code pessoaId} null é o dono (RN-15). */
@@ -74,8 +81,8 @@ public class FaturaServico {
 			var itens = lancamentos.findByFaturaIdOrderByDataDescDescricao(fatura.getId());
 			var total = itens.stream().map(Lancamento::getValor).reduce(BigDecimal.ZERO, BigDecimal::add);
 			return new Vista(new Cartao.Ciclo(mes, fatura.getFechamento(), fatura.getVencimento()), aberta, total,
-					partes(itens), itens);
-		}).orElseGet(() -> new Vista(cartao.ciclo(mes), aberta, BigDecimal.ZERO, List.of(), List.of()));
+					partes(itens), itens, importacoes.findByFaturaIdOrderByImportadaEm(fatura.getId()));
+		}).orElseGet(() -> new Vista(cartao.ciclo(mes), aberta, BigDecimal.ZERO, List.of(), List.of(), List.of()));
 	}
 
 	/**

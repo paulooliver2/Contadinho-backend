@@ -50,4 +50,20 @@ public class Importacao {
 		return id;
 	}
 
+	public UUID getFaturaId() {
+		return faturaId;
+	}
+
+	public String getNomeArquivo() {
+		return nomeArquivo;
+	}
+
+	public String getFormato() {
+		return formato;
+	}
+
+	public Instant getImportadaEm() {
+		return importadaEm;
+	}
+
 }
