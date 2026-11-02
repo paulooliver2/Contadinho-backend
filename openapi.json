@@ -1874,9 +1874,12 @@
           "pessoaId" : {
             "type" : "string",
             "format" : "uuid"
+          },
+          "sugerido" : {
+            "type" : "boolean"
           }
         },
-        "required" : [ "data", "descricao", "id", "origem", "valor" ]
+        "required" : [ "data", "descricao", "id", "origem", "sugerido", "valor" ]
       },
       "ResponsavelPedido" : {
         "type" : "object",
@@ -2615,6 +2618,10 @@
           },
           "parecida" : {
             "$ref" : "#/components/schemas/ParecidaResposta"
+          },
+          "pessoaSugeridaId" : {
+            "type" : "string",
+            "format" : "uuid"
           }
         },
         "required" : [ "data", "descricao", "idExterno", "jaExiste", "valor" ]

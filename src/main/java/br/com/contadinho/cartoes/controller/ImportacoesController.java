@@ -84,7 +84,9 @@ public class ImportacoesController {
 			Integer parcelaTotal,
 			String finalCartao,
 			@NotNull Boolean jaExiste,
-			ParecidaResposta parecida) {
+			ParecidaResposta parecida,
+			/** A pessoa de sempre para esta descrição (RN-18); vira atribuição quando a importação é confirmada. */
+			UUID pessoaSugeridaId) {
 	}
 
 	public record PreviaResposta(
@@ -114,7 +116,7 @@ public class ImportacoesController {
 			var item = i.item();
 			var parecida = i.parecida() == null ? null : new ParecidaResposta(i.parecida().getId(), i.parecida().getDescricao());
 			return new ItemPreviaResposta(item.idExterno(), item.data(), item.descricao(), item.valor(),
-					item.parcelaAtual(), item.parcelaTotal(), item.finalCartao(), i.jaExiste(), parecida);
+					item.parcelaAtual(), item.parcelaTotal(), item.finalCartao(), i.jaExiste(), parecida, i.sugerida());
 		}).toList();
 		var ciclo = previa.ciclo();
 		int jaExistiam = (int) previa.itens().stream().filter(ImportacaoServico.ItemPrevia::jaExiste).count();

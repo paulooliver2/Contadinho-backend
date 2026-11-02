@@ -6,14 +6,18 @@ import java.time.Instant;
 import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
 import br.com.contadinho.cartoes.ComprasImportadas;
 import br.com.contadinho.cartoes.domain.Cartao;
+import br.com.contadinho.cartoes.domain.Descricoes;
 import br.com.contadinho.cartoes.domain.Importacao;
 import br.com.contadinho.cartoes.domain.Lancamento;
 import br.com.contadinho.cartoes.importacao.ArquivoFatura;
@@ -22,6 +26,7 @@ import br.com.contadinho.cartoes.importacao.LeitorFatura;
 import br.com.contadinho.cartoes.repository.ImportacaoRepositorio;
 import br.com.contadinho.cartoes.repository.LancamentoRepositorio;
 import br.com.contadinho.comum.ErroApi;
+import br.com.contadinho.pessoas.Pessoas;
 
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
@@ -48,20 +53,26 @@ public class ImportacaoServico {
 
 	private final ApplicationEventPublisher eventos;
 
+	private final Pessoas pessoas;
+
 	private final Clock clock;
 
 	public ImportacaoServico(FaturaServico faturas, LancamentoRepositorio lancamentos, ImportacaoRepositorio importacoes,
-			ResponsavelServico responsaveis, ApplicationEventPublisher eventos, Clock clock) {
+			ResponsavelServico responsaveis, ApplicationEventPublisher eventos, Pessoas pessoas, Clock clock) {
 		this.faturas = faturas;
 		this.lancamentos = lancamentos;
 		this.importacoes = importacoes;
 		this.responsaveis = responsaveis;
 		this.eventos = eventos;
+		this.pessoas = pessoas;
 		this.clock = clock;
 	}
 
-	/** Um lançamento do arquivo na prévia: já importado antes (HU-07) ou novo, talvez parecido com um digitado. */
-	public record ItemPrevia(ArquivoFatura.Item item, boolean jaExiste, Lancamento parecida) {
+	/**
+	 * Um lançamento do arquivo na prévia: já importado antes (HU-07) ou novo, talvez parecido com um digitado. O novo
+	 * pode vir com a pessoa {@code sugerida} pelas atribuições anteriores (RN-18).
+	 */
+	public record ItemPrevia(ArquivoFatura.Item item, boolean jaExiste, Lancamento parecida, UUID sugerida) {
 	}
 
 	public record Previa(Cartao.Ciclo ciclo, ArquivoFatura arquivo, List<ItemPrevia> itens) {
@@ -82,14 +93,14 @@ public class ImportacaoServico {
 		// RN-09: a fatura escolhida na prévia; senão a que o arquivo informa; senão a sugerida pelas datas.
 		var destino = mes != null ? mes : arquivo.mes() != null ? arquivo.mes()
 				: cartao.mesAberto(arquivo.itens().stream().map(ArquivoFatura.Item::data).max(Comparator.naturalOrder()).orElseThrow());
-		return montar(cartao, arquivo, destino);
+		return montar(usuarioId, cartao, arquivo, destino);
 	}
 
 	/** {@code mesmas}: id externo do arquivo → compra digitada que o usuário confirmou ser a mesma. */
 	public Resultado importar(UUID usuarioId, UUID cartaoId, String nomeArquivo, byte[] conteudo, String senha, YearMonth mes,
 			Map<String, UUID> mesmas) {
 		var cartao = faturas.cartao(usuarioId, cartaoId);
-		var previa = montar(cartao, ler(nomeArquivo, conteudo, senha), mes);
+		var previa = montar(usuarioId, cartao, ler(nomeArquivo, conteudo, senha), mes);
 		// Só vale casar com a parecida que a prévia mostrou; outra coisa quer dizer que a fatura mudou no meio.
 		var parecidas = previa.itens().stream().filter(i -> i.parecida() != null)
 			.collect(Collectors.toMap(i -> i.item().idExterno(), i -> i.parecida().getId()));
@@ -114,8 +125,13 @@ public class ImportacaoServico {
 				casadas++;
 			}
 			else {
-				// RN-17: a parcela chega com o responsável que o dono escolheu para as próximas.
-				novas.add(responsaveis.gravarNova(Lancamento.doArquivo(usuarioId, cartao.getId(), fatura.getId(), importacao.getId(), i.item())).getId());
+				var nova = Lancamento.doArquivo(usuarioId, cartao.getId(), fatura.getId(), importacao.getId(), i.item());
+				// HU-09.2: confirmada a importação, a sugestão vira atribuição e gera o recebível. A regra das
+				// próximas parcelas (RN-17), que o dono escolheu, vale mais que a sugestão.
+				if (i.sugerida() != null) {
+					nova.sugerir(i.sugerida());
+				}
+				novas.add(responsaveis.gravarNova(nova).getId());
 			}
 		}
 		// HU-14: as contas fixas pagas neste cartão procuram o lançamento delas.
@@ -139,8 +155,11 @@ public class ImportacaoServico {
 		}
 	}
 
-	/** RN-11 e RN-59: separa os que já existem e casa cada novo com no máximo uma digitada de mesma data e valor. */
-	private Previa montar(Cartao cartao, ArquivoFatura arquivo, YearMonth mes) {
+	/**
+	 * RN-11 e RN-59: separa os que já existem e casa cada novo com no máximo uma digitada de mesma data e valor. Os
+	 * outros novos ganham a pessoa sugerida (RN-18).
+	 */
+	private Previa montar(UUID usuarioId, Cartao cartao, ArquivoFatura arquivo, YearMonth mes) {
 		var ids = arquivo.itens().stream().map(ArquivoFatura.Item::idExterno).toList();
 		var existentes = lancamentos.findByCartaoIdAndIdExternoIn(cartao.getId(), ids).stream()
 			.map(Lancamento::getIdExterno)
@@ -149,10 +168,11 @@ public class ImportacaoServico {
 			.map(f -> lancamentos.findByFaturaIdAndOrigemOrderByDataAscDescricao(f.getId(), Lancamento.Origem.MANUAL))
 			.orElse(List.of());
 		var usadas = new HashSet<UUID>();
+		var sugestoes = new HashMap<String, Optional<UUID>>();
 		var itens = new ArrayList<ItemPrevia>();
 		for (var item : arquivo.itens()) {
 			if (existentes.contains(item.idExterno())) {
-				itens.add(new ItemPrevia(item, true, null));
+				itens.add(new ItemPrevia(item, true, null, null));
 				continue;
 			}
 			var parecida = digitadas.stream()
@@ -162,10 +182,31 @@ public class ImportacaoServico {
 				.orElse(null);
 			if (parecida != null) {
 				usadas.add(parecida.getId());
+				itens.add(new ItemPrevia(item, false, parecida, null));
+				continue;
 			}
-			itens.add(new ItemPrevia(item, false, parecida));
+			var sugerida = sugestoes.computeIfAbsent(Descricoes.normalizar(item.descricao()), d -> sugerida(usuarioId, d));
+			itens.add(new ItemPrevia(item, false, null, sugerida.orElse(null)));
 		}
 		return new Previa(faturas.ciclo(cartao, mes), arquivo, itens);
+	}
+
+	/**
+	 * RN-18: a mesma pessoa nas 2 últimas vezes que a descrição apareceu, em qualquer cartão. Compra do dono não
+	 * sugere ninguém, e pessoa arquivada não é sugerida (RN-36).
+	 */
+	private Optional<UUID> sugerida(UUID usuarioId, String descricaoNormalizada) {
+		var ultimas = lancamentos.findTop2ByUsuarioIdAndDescricaoNormalizadaOrderByDataDescIdDesc(usuarioId,
+				descricaoNormalizada);
+		if (ultimas.size() < 2) {
+			return Optional.empty();
+		}
+		var pessoa = ultimas.getFirst().getPessoaId();
+		if (pessoa == null || !Objects.equals(pessoa, ultimas.getLast().getPessoaId())
+				|| !pessoas.podeEscolher(usuarioId, pessoa)) {
+			return Optional.empty();
+		}
+		return Optional.of(pessoa);
 	}
 
 }

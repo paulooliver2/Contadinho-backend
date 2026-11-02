@@ -61,6 +61,9 @@ public class Lancamento {
 	/** Responsável pela compra; null é o dono (RN-15). */
 	private UUID pessoaId;
 
+	/** O responsável veio das atribuições anteriores (RN-18), e o dono ainda não tocou nele (HU-09.3). */
+	private boolean sugerido;
+
 	/** Digitada e depois casada com a compra do arquivo (RN-59): desfeita a importação, volta a ser digitada (HU-44). */
 	private boolean digitadoAntes;
 
@@ -126,9 +129,16 @@ public class Lancamento {
 		this.parcelaTotal = compra.parcelaTotal() == null ? null : compra.parcelaTotal().shortValue();
 	}
 
-	/** HU-08: de quem é a compra; null volta para o dono. */
+	/** HU-08: de quem é a compra; null volta para o dono. Escolhido pelo dono, deixa de ser sugerido (HU-09.3). */
 	public void atribuir(UUID pessoaId) {
 		this.pessoaId = pessoaId;
+		this.sugerido = false;
+	}
+
+	/** RN-18: a pessoa de sempre para esta descrição, até o dono conferir. */
+	public void sugerir(UUID pessoaId) {
+		this.pessoaId = pessoaId;
+		this.sugerido = true;
 	}
 
 	/** O que o dono informa ao digitar uma compra (RN-60). */
@@ -149,6 +159,10 @@ public class Lancamento {
 
 	public UUID getPessoaId() {
 		return pessoaId;
+	}
+
+	public boolean isSugerido() {
+		return sugerido;
 	}
 
 	public UUID getFaturaId() {

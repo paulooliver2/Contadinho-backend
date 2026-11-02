@@ -74,11 +74,13 @@ public class FaturasController {
 			String finalCartao,
 			@NotNull Lancamento.Origem origem,
 			/** De quem é a compra; sem pessoa, é do dono (RN-15). */
-			UUID pessoaId) {
+			UUID pessoaId,
+			/** A pessoa veio das atribuições anteriores (RN-18) e o dono ainda não conferiu (HU-09.3). */
+			@NotNull Boolean sugerido) {
 
 		public static LancamentoResposta de(Lancamento l) {
 			return new LancamentoResposta(l.getId(), l.getData(), l.getDescricao(), l.getValor(), l.getParcelaAtual(),
-					l.getParcelaTotal(), l.getFinalCartao(), l.getOrigem(), l.getPessoaId());
+					l.getParcelaTotal(), l.getFinalCartao(), l.getOrigem(), l.getPessoaId(), l.isSugerido());
 		}
 	}
 
