@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-/** A conta do dono e a chave Pix que vai nas cobranças (HU-03). */
+/** A conta do dono, a chave Pix que vai nas cobranças (HU-03) e o modelo da mensagem (HU-21). */
 @RestController
 @RequestMapping("/api/conta")
 public class ContaController {
@@ -44,7 +44,16 @@ public class ContaController {
 			@NotNull String nome,
 			@NotNull String email,
 			/** Sem chave, não vem; o app pede antes de cobrar (RN-06). */
-			Pix pix) {
+			Pix pix,
+			/** HU-21: sem modelo, o app usa o texto padrão. */
+			String modeloCobranca) {
+	}
+
+	public record ModeloPedido(@Size(max = 1000, message = "Use até 1.000 caracteres.") String modelo) {
+	}
+
+	/** {@code modelo} null: voltou ao texto padrão. */
+	public record ModeloResposta(String modelo) {
 	}
 
 	public record PixPedido(
@@ -56,7 +65,13 @@ public class ContaController {
 	@GetMapping
 	public Conta eu(@UsuarioLogado UUID usuarioId) {
 		var u = servico.conta(usuarioId);
-		return new Conta(u.getId(), u.getNome(), u.getEmail(), Pix.de(u));
+		return new Conta(u.getId(), u.getNome(), u.getEmail(), Pix.de(u), u.getModeloCobranca());
+	}
+
+	/** HU-21. Texto vazio volta ao padrão; variável desconhecida é 400 no campo modelo. */
+	@PutMapping("/modelo-cobranca")
+	public ModeloResposta definirModelo(@UsuarioLogado UUID usuarioId, @Valid @RequestBody ModeloPedido pedido) {
+		return new ModeloResposta(servico.definirModeloCobranca(usuarioId, pedido.modelo()).getModeloCobranca());
 	}
 
 	/** HU-03.1. Chave fora do formato do tipo é 400 no campo chave. */

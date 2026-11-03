@@ -29,6 +29,9 @@ public class Usuario {
 
 	private String pixChave;
 
+	/** HU-21: o texto da cobrança com variáveis; null usa o texto padrão do app. */
+	private String modeloCobranca;
+
 	private Instant criadoEm;
 
 	protected Usuario() {
@@ -50,6 +53,14 @@ public class Usuario {
 	public void definirPix(ChavePix.Tipo tipo, String chave) {
 		this.pixTipo = tipo;
 		this.pixChave = chave;
+	}
+
+	public void definirModeloCobranca(String modelo) {
+		this.modeloCobranca = modelo;
+	}
+
+	public String getModeloCobranca() {
+		return modeloCobranca;
 	}
 
 	public void removerPix() {

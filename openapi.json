@@ -404,6 +404,34 @@
         }
       }
     },
+    "/api/conta/modelo-cobranca" : {
+      "put" : {
+        "tags" : [ "conta-controller" ],
+        "operationId" : "definirModelo",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ModeloPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/ModeloResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/cartoes/{id}" : {
       "put" : {
         "tags" : [ "cartoes-controller" ],
@@ -2256,6 +2284,24 @@
         },
         "required" : [ "chave", "tipo" ]
       },
+      "ModeloPedido" : {
+        "type" : "object",
+        "properties" : {
+          "modelo" : {
+            "type" : "string",
+            "maxLength" : 1000,
+            "minLength" : 0
+          }
+        }
+      },
+      "ModeloResposta" : {
+        "type" : "object",
+        "properties" : {
+          "modelo" : {
+            "type" : "string"
+          }
+        }
+      },
       "EdicaoCartaoPedido" : {
         "type" : "object",
         "properties" : {
@@ -3391,6 +3437,9 @@
           },
           "pix" : {
             "$ref" : "#/components/schemas/Pix"
+          },
+          "modeloCobranca" : {
+            "type" : "string"
           }
         },
         "required" : [ "email", "id", "nome" ]
