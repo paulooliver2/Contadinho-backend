@@ -62,6 +62,11 @@ public class TentativasLogin {
 			.update();
 	}
 
+	/** HU-04: a conta apagada leva junto as tentativas do e-mail dela. */
+	public void apagar(String email) {
+		jdbc.sql("delete from tentativa_login where lower(email) = :email").param("email", email).update();
+	}
+
 	private static OffsetDateTime utc(Instant instante) {
 		return instante.atOffset(ZoneOffset.UTC);
 	}

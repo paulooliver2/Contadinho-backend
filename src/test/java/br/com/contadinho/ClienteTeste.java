@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.web.client.RestClient;
@@ -79,6 +80,14 @@ public class ClienteTeste {
 
 	public Resposta delete(String caminho, String tokenAcesso) {
 		var r = http.delete().uri(caminho).headers(h -> autorizar(h, tokenAcesso))
+			.retrieve().toEntity(Object.class);
+		return new Resposta(r.getStatusCode().value(), r.getBody(), r.getHeaders());
+	}
+
+	/** DELETE com corpo JSON (ex.: a senha para apagar a conta). */
+	public Resposta delete(String caminho, Object corpo, String tokenAcesso) {
+		var r = http.method(HttpMethod.DELETE).uri(caminho).headers(h -> autorizar(h, tokenAcesso))
+			.contentType(MediaType.APPLICATION_JSON).body(corpo)
 			.retrieve().toEntity(Object.class);
 		return new Resposta(r.getStatusCode().value(), r.getBody(), r.getHeaders());
 	}

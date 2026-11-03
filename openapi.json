@@ -1635,6 +1635,25 @@
             }
           }
         }
+      },
+      "delete" : {
+        "tags" : [ "conta-controller" ],
+        "operationId" : "apagar",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/ApagarPedido"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
       }
     },
     "/api/categorias" : {
@@ -3623,6 +3642,16 @@
           }
         },
         "required" : [ "tela" ]
+      },
+      "ApagarPedido" : {
+        "type" : "object",
+        "properties" : {
+          "senha" : {
+            "type" : "string",
+            "minLength" : 1
+          }
+        },
+        "required" : [ "senha" ]
       }
     },
     "securitySchemes" : {

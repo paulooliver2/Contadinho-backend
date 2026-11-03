@@ -5,6 +5,7 @@ import java.util.UUID;
 import br.com.contadinho.comum.UsuarioLogado;
 import br.com.contadinho.conta.domain.ChavePix;
 import br.com.contadinho.conta.domain.Usuario;
+import br.com.contadinho.conta.service.AutenticacaoServico;
 import br.com.contadinho.conta.service.ContaServico;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -27,8 +28,11 @@ public class ContaController {
 
 	private final ContaServico servico;
 
-	public ContaController(ContaServico servico) {
+	private final AutenticacaoServico autenticacao;
+
+	public ContaController(ContaServico servico, AutenticacaoServico autenticacao) {
 		this.servico = servico;
+		this.autenticacao = autenticacao;
 	}
 
 	/** CPF só com dígitos e celular como +5561999998888; o app formata para mostrar. */
@@ -78,6 +82,16 @@ public class ContaController {
 	@PutMapping("/pix")
 	public Pix definirPix(@UsuarioLogado UUID usuarioId, @Valid @RequestBody PixPedido pedido) {
 		return Pix.de(servico.definirPix(usuarioId, pedido.tipo(), pedido.chave()));
+	}
+
+	public record ApagarPedido(@NotBlank(message = "Digite sua senha.") String senha) {
+	}
+
+	/** HU-04: apaga a conta e tudo dela, confirmando com a senha. Senha errada é erro no campo senha (400). */
+	@DeleteMapping
+	@ResponseStatus(HttpStatus.NO_CONTENT)
+	public void apagar(@UsuarioLogado UUID usuarioId, @Valid @RequestBody ApagarPedido pedido) {
+		autenticacao.apagarConta(usuarioId, pedido.senha());
 	}
 
 	@DeleteMapping("/pix")

@@ -4,6 +4,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.Map;
 import java.util.UUID;
 
 import br.com.contadinho.comum.ErroApi;
@@ -20,6 +21,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * Cadastro, login e sessões (HU-01).
@@ -30,6 +32,8 @@ public class AutenticacaoServico {
 	public static final String CREDENCIAIS_INVALIDAS = "E-mail ou senha incorretos.";
 
 	public static final String SESSAO_ENCERRADA = "Sua sessão terminou. Entre de novo.";
+
+	public static final String SENHA_INCORRETA = "Senha incorreta.";
 
 	private final UsuarioRepositorio usuarios;
 
@@ -45,11 +49,14 @@ public class AutenticacaoServico {
 
 	private final Clock clock;
 
+	private final TransactionTemplate transacao;
+
 	/** Comparado quando o e-mail não existe, para a resposta demorar o mesmo e não revelar quem tem conta. */
 	private final String hashDeMentira;
 
 	public AutenticacaoServico(UsuarioRepositorio usuarios, SessaoRepositorio sessoes, TentativasLogin tentativas,
-			EmissorTokens tokens, PasswordEncoder senhas, ApplicationEventPublisher eventos, Clock clock) {
+			EmissorTokens tokens, PasswordEncoder senhas, ApplicationEventPublisher eventos, Clock clock,
+			TransactionTemplate transacao) {
 		this.usuarios = usuarios;
 		this.sessoes = sessoes;
 		this.tentativas = tentativas;
@@ -57,6 +64,7 @@ public class AutenticacaoServico {
 		this.senhas = senhas;
 		this.eventos = eventos;
 		this.clock = clock;
+		this.transacao = transacao;
 		this.hashDeMentira = senhas.encode(UUID.randomUUID().toString());
 	}
 
@@ -104,6 +112,33 @@ public class AutenticacaoServico {
 			throw new ErroApi(HttpStatus.UNAUTHORIZED, CREDENCIAIS_INVALIDAS);
 		}
 		return abrirSessao(usuario.get().getId(), dispositivo, agora);
+	}
+
+	/**
+	 * HU-04: apaga a conta e tudo dela (cascata a partir de usuario, V1), as sessões incluídas. A senha confere como
+	 * no login e conta para o bloqueio da RN-03; por isso, como no {@link #entrar}, a conferência fica fora da
+	 * transação e só a exclusão fica dentro.
+	 */
+	public void apagarConta(UUID usuarioId, String senha) {
+		var agora = Instant.now(clock);
+		var usuario = usuarios.findById(usuarioId)
+			.orElseThrow(() -> new ErroApi(HttpStatus.UNAUTHORIZED, SESSAO_ENCERRADA));
+		var email = usuario.getEmail();
+		tentativas.bloqueadoAte(email, agora).ifPresent(ate -> {
+			throw bloqueado(ate, agora);
+		});
+		var acertou = senhas.matches(senha, usuario.getSenhaHash());
+		tentativas.registrar(email, acertou, agora);
+		if (!acertou) {
+			tentativas.bloqueadoAte(email, agora).ifPresent(ate -> {
+				throw bloqueado(ate, agora);
+			});
+			throw ErroApi.campos(Map.of("senha", SENHA_INCORRETA));
+		}
+		transacao.executeWithoutResult(status -> {
+			usuarios.deleteById(usuarioId);
+			tentativas.apagar(email);
+		});
 	}
 
 	/** Troca o refresh token por um novo; o antigo deixa de valer (rotação). */
