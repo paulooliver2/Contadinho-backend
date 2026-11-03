@@ -10,6 +10,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -17,10 +18,12 @@ import br.com.contadinho.comum.ErroApi;
 import br.com.contadinho.investimentos.domain.AtualizacaoFonte;
 import br.com.contadinho.investimentos.domain.Cotacao;
 import br.com.contadinho.investimentos.domain.DiasUteis;
+import br.com.contadinho.investimentos.domain.Evolucao;
 import br.com.contadinho.investimentos.domain.Investimento;
 import br.com.contadinho.investimentos.domain.ValorAtual;
 import br.com.contadinho.investimentos.repository.AtualizacaoFonteRepositorio;
 import br.com.contadinho.investimentos.repository.CdiRepositorio;
+import br.com.contadinho.investimentos.repository.CotacaoDiariaRepositorio;
 import br.com.contadinho.investimentos.repository.CotacaoRepositorio;
 import br.com.contadinho.investimentos.domain.Movimentacao;
 import br.com.contadinho.investimentos.domain.Posicao;
@@ -40,6 +43,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class InvestimentoServico {
 
 	public static final String NAO_ENCONTRADO = "Investimento não encontrado.";
+
+	public static final String SO_ACAO_FII = "Só ação pode ser FII.";
 
 	public static final String CRIPTO_FORA = "A busca de cripto está fora do ar. Tente de novo em instantes.";
 
@@ -80,7 +85,7 @@ public class InvestimentoServico {
 	public record Novo(Investimento.Tipo tipo, String codigo, BigDecimal quantidade, BigDecimal preco,
 			BigDecimal valor, TituloTesouro tesouroTipo, Integer tesouroAno, Investimento.Produto produto,
 			String emissor, Investimento.Indexador indexador, BigDecimal taxa, LocalDate dataAplicacao,
-			LocalDate vencimento) {
+			LocalDate vencimento, Boolean fii) {
 	}
 
 	public record NovaMovimentacao(Movimentacao.Tipo tipo, LocalDate data, BigDecimal quantidade, BigDecimal preco,
@@ -110,9 +115,12 @@ public class InvestimentoServico {
 
 	private final AtualizacaoFonteRepositorio controles;
 
+	private final CotacaoDiariaRepositorio diarias;
+
 	public InvestimentoServico(InvestimentoRepositorio investimentos, MovimentacaoRepositorio movimentacoes,
 			FonteAtivos fonte, Clock clock, CotacaoRepositorio cotacoes, CdiRepositorio cdis,
-			AtualizacaoFonteRepositorio controles) {
+			AtualizacaoFonteRepositorio controles, CotacaoDiariaRepositorio diarias) {
+		this.diarias = diarias;
 		this.investimentos = investimentos;
 		this.movimentacoes = movimentacoes;
 		this.fonte = fonte;
@@ -143,6 +151,9 @@ public class InvestimentoServico {
 		var campos = new LinkedHashMap<String, String>();
 		if (novo.tipo() == null) {
 			throw ErroApi.campos(Map.of("tipo", "Escolha o tipo."));
+		}
+		if (Boolean.TRUE.equals(novo.fii()) && novo.tipo() != Investimento.Tipo.ACAO) {
+			throw ErroApi.campos(Map.of("fii", SO_ACAO_FII));
 		}
 		Investimento investimento;
 		Movimentacao inicial;
@@ -216,6 +227,7 @@ public class InvestimentoServico {
 			}
 			default -> throw new IllegalStateException();
 		}
+		investimento.setFii(Boolean.TRUE.equals(novo.fii()));
 		investimentos.save(investimento);
 		movimentacoes.save(inicial);
 		return detalhe(investimento, List.of(inicial));
@@ -302,6 +314,57 @@ public class InvestimentoServico {
 		});
 		movimentacoes.delete(alvo);
 		return detalhe(i, depois);
+	}
+
+	/** HU-32: Ação/ETF ou FII, só para a distribuição por classe. */
+	public Detalhe alterarClasse(UUID usuarioId, UUID id, boolean fii) {
+		var i = buscar(usuarioId, id);
+		if (i.getTipo() != Investimento.Tipo.ACAO) {
+			throw ErroApi.campos(Map.of("fii", SO_ACAO_FII));
+		}
+		i.setFii(fii);
+		return detalhe(i, movimentacoes.findByInvestimentoId(i.getId()));
+	}
+
+	/**
+	 * HU-32: o valor de cada dia do período e o rendimento, descontados aportes e resgates. Só lê o que está guardado
+	 * (preços do dia, cotação atual e CDI); nunca chama fonte externa.
+	 */
+	@Transactional(readOnly = true)
+	public Evolucao.Resultado evolucao(UUID usuarioId, Evolucao.Periodo periodo) {
+		var hoje = LocalDate.now(clock);
+		var lista = investimentos.findByUsuarioIdOrderByCriadoEm(usuarioId);
+		var porInvestimento = movimentacoes.findByInvestimentoIdIn(lista.stream().map(Investimento::getId).toList())
+			.stream()
+			.collect(java.util.stream.Collectors.groupingBy(Movimentacao::getInvestimentoId));
+		var diariosPorTipo = new java.util.HashMap<Investimento.Tipo, Map<String, NavigableMap<LocalDate, BigDecimal>>>();
+		var atuais = new java.util.HashMap<String, BigDecimal>();
+		for (var tipo : List.of(Investimento.Tipo.ACAO, Investimento.Tipo.CRIPTO, Investimento.Tipo.TESOURO)) {
+			var codigos = lista.stream().filter(i -> i.getTipo() == tipo).map(Investimento::getCodigo).toList();
+			diariosPorTipo.put(tipo, diarias.porCodigo(tipo, codigos, hoje));
+			if (!codigos.isEmpty()) {
+				cotacoes.findByTipoAndCodigoIn(tipo, codigos)
+					.stream()
+					.filter(c -> c.getPreco() != null)
+					.forEach(c -> atuais.put(tipo + "|" + c.getCodigo(), c.getPreco()));
+			}
+		}
+		var ativos = lista.stream().map(i -> {
+			var precos = i.getTipo() == Investimento.Tipo.RENDA_FIXA ? null
+					: diariosPorTipo.get(i.getTipo()).get(i.getCodigo());
+			return new Evolucao.Ativo(i, porInvestimento.getOrDefault(i.getId(), List.of()),
+					precos == null ? new java.util.TreeMap<LocalDate, BigDecimal>() : precos,
+					atuais.get(i.getTipo() + "|" + i.getCodigo()));
+		}).toList();
+		var cdi = new java.util.TreeMap<LocalDate, BigDecimal>();
+		porInvestimento.values()
+			.stream()
+			.flatMap(List::stream)
+			.map(Movimentacao::getData)
+			.min(LocalDate::compareTo)
+			.ifPresent(de -> cdis.findByDataBetweenOrderByData(de.minusDays(7), hoje)
+				.forEach(c -> cdi.put(c.getData(), c.getTaxa())));
+		return Evolucao.calcular(periodo, hoje, ativos, cdi);
 	}
 
 	public void excluir(UUID usuarioId, UUID id) {

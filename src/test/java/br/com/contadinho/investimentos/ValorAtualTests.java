@@ -90,6 +90,33 @@ class ValorAtualTests {
 	}
 
 	@Test
+	void saldosPorDiaIgualAoCalculoDeCadaDia() {
+		var i = cdb(Investimento.Indexador.CDI, "110", APLICACAO.plusDays(20));
+		var cdi = new TreeMap<LocalDate, BigDecimal>();
+		for (var d = APLICACAO.minusDays(3); d.isBefore(APLICACAO.plusDays(30)); d = d.plusDays(1)) {
+			if (d.getDayOfWeek().getValue() < 6) {
+				cdi.put(d, n("0.04"));
+			}
+		}
+		// Resgate parcial num sábado (07/11) e num dia útil (12/11).
+		var movs = List.of(inicial(i, "10000"),
+				new Movimentacao(i.getId(), usuario, Movimentacao.Tipo.RESGATE, LocalDate.of(2026, 11, 7), null, null,
+						n("1000"), false, AGORA),
+				new Movimentacao(i.getId(), usuario, Movimentacao.Tipo.RESGATE, LocalDate.of(2026, 11, 12), null, null,
+						n("500"), false, AGORA));
+
+		var serie = ValorAtual.saldosPorDia(i, movs, cdi, APLICACAO.plusDays(29));
+
+		for (var d = APLICACAO; !d.isAfter(APLICACAO.plusDays(29)); d = d.plusDays(1)) {
+			var dia = d;
+			var ate = movs.stream().filter(m -> !m.getData().isAfter(dia)).toList();
+			var umDia = ValorAtual.rendaFixa(i, ate, cdi.headMap(dia, true)).valorAtual();
+			var esperado = umDia != null ? umDia : Posicao.de(Investimento.Tipo.RENDA_FIXA, ate).aplicado();
+			assertThat(serie.floorEntry(dia).getValue()).as(dia.toString()).isEqualByComparingTo(esperado);
+		}
+	}
+
+	@Test
 	void semCdiDepoisDaAplicacao() {
 		var i = cdb(Investimento.Indexador.CDI, "110", APLICACAO.plusYears(2));
 		var soAntes = new TreeMap<LocalDate, BigDecimal>();

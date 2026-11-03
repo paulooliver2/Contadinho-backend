@@ -3,6 +3,7 @@ package br.com.contadinho.investimentos.service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 
@@ -18,8 +19,12 @@ public interface FonteCotacoes {
 	/** Ids da CoinGecko → preço em reais. */
 	Map<String, BigDecimal> criptos(Collection<String> ids);
 
-	/** Nome oficial + " " + ano de vencimento (como o código da HU-30) → preço de venda e a data dele. */
-	Map<String, Preco> tesouro();
+	/**
+	 * Nome oficial + " " + ano (como o código da HU-30) → os preços de venda, da data mais antiga para a mais nova.
+	 * HU-32: só os códigos pedidos; cada lista traz os dias com data base a partir da data pedida e sempre o mais
+	 * novo. Um código que a planilha não tem fica de fora.
+	 */
+	Map<String, List<Preco>> tesouro(Map<String, LocalDate> desde);
 
 	/** O CDI de cada dia útil entre as datas (inclusive), em % ao dia. */
 	NavigableMap<LocalDate, BigDecimal> cdi(LocalDate de, LocalDate ate);

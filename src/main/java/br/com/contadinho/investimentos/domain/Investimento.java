@@ -55,6 +55,9 @@ public class Investimento {
 
 	private boolean conferido;
 
+	/** HU-32: só em ação; separa os FIIs na distribuição por classe. */
+	private boolean fii;
+
 	private Instant criadoEm;
 
 	protected Investimento() {
@@ -126,6 +129,14 @@ public class Investimento {
 
 	public boolean isConferido() {
 		return conferido;
+	}
+
+	public boolean isFii() {
+		return fii;
+	}
+
+	public void setFii(boolean fii) {
+		this.fii = fii;
 	}
 
 	public Instant getCriadoEm() {

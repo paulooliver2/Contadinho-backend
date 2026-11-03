@@ -12,13 +12,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 /**
  * O preço de venda do Tesouro Direto na planilha de dados abertos do Tesouro Transparente. O arquivo tem o histórico
- * inteiro; é lido linha a linha e fica só a data mais recente de cada título.
+ * inteiro; é lido linha a linha e ficam só os títulos pedidos: os dias desde a data pedida (HU-32) e o mais novo.
  */
 public class CotacoesTesouro {
 
@@ -37,16 +38,33 @@ public class CotacoesTesouro {
 	private record Linha(LocalDate vencimento, LocalDate base, BigDecimal preco) {
 	}
 
-	public Map<String, FonteCotacoes.Preco> tesouro() {
+	/** O que fica de um título: os dias desde a data pedida e a linha mais nova. */
+	private static final class Titulo {
+
+		private final TreeMap<LocalDate, Linha> dias = new TreeMap<>();
+
+		private Linha maisNova;
+
+	}
+
+	public Map<String, List<FonteCotacoes.Preco>> tesouro(Map<String, LocalDate> desde) {
+		if (desde.isEmpty()) {
+			return Map.of();
+		}
 		try {
-			Map<String, Linha> titulos = http.get().uri(ENDERECO).exchange((pedido, resposta) -> {
+			Map<String, Titulo> titulos = http.get().uri(ENDERECO).exchange((pedido, resposta) -> {
 				if (!resposta.getStatusCode().is2xxSuccessful()) {
 					throw new FonteCotacoes.Indisponivel("tesouro", null);
 				}
-				return ler(new BufferedReader(new InputStreamReader(resposta.getBody(), StandardCharsets.ISO_8859_1)));
+				return ler(new BufferedReader(new InputStreamReader(resposta.getBody(), StandardCharsets.ISO_8859_1)),
+						desde);
 			});
-			var precos = new HashMap<String, FonteCotacoes.Preco>();
-			titulos.forEach((codigo, l) -> precos.put(codigo, new FonteCotacoes.Preco(l.preco(), l.base())));
+			var precos = new HashMap<String, List<FonteCotacoes.Preco>>();
+			titulos.forEach((codigo, t) -> {
+				t.dias.put(t.maisNova.base(), t.dias.getOrDefault(t.maisNova.base(), t.maisNova));
+				precos.put(codigo,
+						t.dias.values().stream().map(l -> new FonteCotacoes.Preco(l.preco(), l.base())).toList());
+			});
 			return precos;
 		}
 		catch (RestClientException e) {
@@ -54,7 +72,7 @@ public class CotacoesTesouro {
 		}
 	}
 
-	private static Map<String, Linha> ler(BufferedReader leitor) throws IOException {
+	private static Map<String, Titulo> ler(BufferedReader leitor, Map<String, LocalDate> desde) throws IOException {
 		var cabecalho = leitor.readLine();
 		if (cabecalho == null) {
 			throw new FonteCotacoes.Indisponivel("tesouro", null);
@@ -69,7 +87,7 @@ public class CotacoesTesouro {
 			throw new FonteCotacoes.Indisponivel("tesouro", null);
 		}
 		int minimo = Math.max(Math.max(tipo, vencimento), Math.max(base, preco));
-		var titulos = new HashMap<String, Linha>();
+		var titulos = new HashMap<String, Titulo>();
 		String texto;
 		while ((texto = leitor.readLine()) != null) {
 			var campos = texto.split(";", -1);
@@ -82,7 +100,15 @@ public class CotacoesTesouro {
 						new BigDecimal(campos[preco].trim().replace(".", "").replace(",", ".")));
 				var nome = campos[tipo].trim();
 				var codigo = nome + " " + anoDoNome(nome, linha.vencimento());
-				titulos.merge(codigo, linha, CotacoesTesouro::maisNova);
+				var inicio = desde.get(codigo);
+				if (inicio == null) {
+					continue;
+				}
+				var titulo = titulos.computeIfAbsent(codigo, c -> new Titulo());
+				titulo.maisNova = titulo.maisNova == null ? linha : maisNova(titulo.maisNova, linha);
+				if (!linha.base().isBefore(inicio)) {
+					titulo.dias.merge(linha.base(), linha, CotacoesTesouro::maisNova);
+				}
 			}
 			catch (DateTimeParseException | NumberFormatException e) {
 				// Linha malformada: fica de fora.

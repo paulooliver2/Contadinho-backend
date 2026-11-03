@@ -11,7 +11,7 @@ import java.util.Map;
 public class FonteFalsa implements FonteAtivos {
 
 	private static final Map<String, String> TICKERS = Map.of("PETR4", "Petrobras PN", "VALE3", "Vale ON", "ITUB4",
-			"Itaú Unibanco PN", "BOVA11", "iShares Ibovespa");
+			"Itaú Unibanco PN", "BOVA11", "iShares Ibovespa", "HGLG11", "CSHG Logística");
 
 	private static final List<Cripto> CRIPTOS = List.of(new Cripto("bitcoin", "BTC", "Bitcoin"),
 			new Cripto("ethereum", "ETH", "Ethereum"), new Cripto("pepe", "PEPE", "Pepe"));

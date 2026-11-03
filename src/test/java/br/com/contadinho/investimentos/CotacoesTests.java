@@ -12,6 +12,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import br.com.contadinho.investimentos.service.CotacoesBancoCentral;
 import br.com.contadinho.investimentos.service.CotacoesBrapi;
@@ -89,12 +90,15 @@ class CotacoesTests {
 				"Tesouro IPCA+;15/05/2035;29/10/2026;7,15;7,25;3370,00;3365,00;3365,00");
 		servidor.expect(requestTo(CotacoesTesouro.ENDERECO)).andRespond(withSuccess(csv, MediaType.TEXT_PLAIN));
 
-		var precos = new CotacoesTesouro(builder).tesouro();
+		var hoje = LocalDate.of(2026, 11, 3);
+		var precos = new CotacoesTesouro(builder)
+			.tesouro(Map.of("Tesouro IPCA+ 2035", hoje, "Tesouro Selic 2029", hoje, "Tesouro Prefixado 2027", hoje));
 
 		assertThat(precos).containsOnlyKeys("Tesouro IPCA+ 2035", "Tesouro Selic 2029");
-		assertThat(precos.get("Tesouro IPCA+ 2035").valor()).isEqualByComparingTo("3400.25");
-		assertThat(precos.get("Tesouro IPCA+ 2035").referencia()).isEqualTo(LocalDate.of(2026, 10, 31));
-		assertThat(precos.get("Tesouro Selic 2029").valor()).isEqualByComparingTo("16950.12");
+		assertThat(precos.get("Tesouro IPCA+ 2035")).hasSize(1);
+		assertThat(precos.get("Tesouro IPCA+ 2035").getLast().valor()).isEqualByComparingTo("3400.25");
+		assertThat(precos.get("Tesouro IPCA+ 2035").getLast().referencia()).isEqualTo(LocalDate.of(2026, 10, 31));
+		assertThat(precos.get("Tesouro Selic 2029").getLast().valor()).isEqualByComparingTo("16950.12");
 	}
 
 	@Test
@@ -105,11 +109,29 @@ class CotacoesTests {
 				"Tesouro Renda+ Aposentadoria Extra;15/12/2049;31/10/2026;1500,00");
 		servidor.expect(requestTo(CotacoesTesouro.ENDERECO)).andRespond(withSuccess(csv, MediaType.TEXT_PLAIN));
 
-		var precos = new CotacoesTesouro(builder).tesouro();
+		var hoje = LocalDate.of(2026, 11, 3);
+		var precos = new CotacoesTesouro(builder).tesouro(Map.of("Tesouro Educa+ 2030", hoje, "Tesouro Educa+ 2026",
+				hoje, "Tesouro Renda+ Aposentadoria Extra 2030", hoje));
 
-		assertThat(precos.get("Tesouro Educa+ 2030").valor()).isEqualByComparingTo("3100.00");
-		assertThat(precos.get("Tesouro Educa+ 2026").valor()).isEqualByComparingTo("3900.00");
-		assertThat(precos.get("Tesouro Renda+ Aposentadoria Extra 2030").valor()).isEqualByComparingTo("1500.00");
+		assertThat(precos.get("Tesouro Educa+ 2030").getLast().valor()).isEqualByComparingTo("3100.00");
+		assertThat(precos.get("Tesouro Educa+ 2026").getLast().valor()).isEqualByComparingTo("3900.00");
+		assertThat(precos.get("Tesouro Renda+ Aposentadoria Extra 2030").getLast().valor())
+			.isEqualByComparingTo("1500.00");
+	}
+
+	@Test
+	void tesouroDevolveOsDiasDesdeAData() {
+		var csv = String.join("\n", "Tipo Titulo;Data Vencimento;Data Base;PU Venda Manha",
+				"Tesouro IPCA+;15/05/2035;29/10/2026;3365,00", "Tesouro IPCA+;15/05/2035;31/10/2026;3400,25",
+				"Tesouro Selic;01/03/2029;31/10/2026;16950,12", "Tesouro IPCA+;15/05/2035;30/10/2026;3380,55");
+		servidor.expect(requestTo(CotacoesTesouro.ENDERECO)).andRespond(withSuccess(csv, MediaType.TEXT_PLAIN));
+
+		var precos = new CotacoesTesouro(builder).tesouro(Map.of("Tesouro IPCA+ 2035", LocalDate.of(2026, 10, 30)));
+
+		assertThat(precos).containsOnlyKeys("Tesouro IPCA+ 2035");
+		assertThat(precos.get("Tesouro IPCA+ 2035")).extracting(FonteCotacoes.Preco::referencia)
+			.containsExactly(LocalDate.of(2026, 10, 30), LocalDate.of(2026, 10, 31));
+		assertThat(precos.get("Tesouro IPCA+ 2035").getFirst().valor()).isEqualByComparingTo("3380.55");
 	}
 
 	@Test

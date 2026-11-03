@@ -64,6 +64,7 @@ class AtualizacaoTests {
 		jdbc.update("delete from cotacao");
 		jdbc.update("delete from cdi_diario");
 		jdbc.update("delete from atualizacao_fonte");
+		jdbc.update("delete from cotacao_diaria");
 		reset(fonte);
 	}
 
@@ -134,6 +135,18 @@ class AtualizacaoTests {
 		assertThat(n(r.objeto().get("patrimonio"))).isEqualByComparingTo("3800.00");
 		assertThat(n(r.objeto().get("ganho"))).isEqualByComparingTo("800.00");
 		assertThat(n(api.get("/api/investimentos/" + id, dono).objeto().get("valorAtual"))).isEqualByComparingTo("3800");
+	}
+
+	@Test
+	void atualizarGuardaOPrecoDoDia() {
+		acao("PETR4", 100, 30);
+
+		atualizar(dono);
+
+		assertThat(jdbc.queryForObject(
+				"select preco from cotacao_diaria where tipo = 'ACAO' and codigo = 'PETR4' and data = ?",
+				BigDecimal.class, java.sql.Date.valueOf(HOJE)))
+			.isEqualByComparingTo("38");
 	}
 
 	@Test
@@ -235,15 +248,111 @@ class AtualizacaoTests {
 	@Test
 	void tesouroComODiaAnteriorNaoBaixaAPlanilhaDeNovo() {
 		criar(Map.of("tipo", "TESOURO", "tesouroTipo", "IPCA", "tesouroAno", 2035, "quantidade", 1, "valor", 3000));
-		jdbc.update("insert into cotacao (id, tipo, codigo, preco, referencia, atualizado_em, fonte) values "
-				+ "(gen_random_uuid(), 'TESOURO', 'Tesouro IPCA+ 2035', 3400, ?, now() - interval '1 hour', 'tesouro')",
-				java.sql.Date.valueOf(diaUtilAntesDeHoje()));
-		jdbc.update("insert into atualizacao_fonte (fonte, tentou_em, falhou) values ('tesouro', now() - interval "
-				+ "'1 hour', false)");
+		jdbc.update("insert into cotacao (id, tipo, codigo, preco, referencia, atualizado_em, fonte, historico_desde) "
+				+ "values (gen_random_uuid(), 'TESOURO', 'Tesouro IPCA+ 2035', 3400, ?, now() - interval '1 hour', "
+				+ "'tesouro', ?)", java.sql.Date.valueOf(diaUtilAntesDeHoje()), java.sql.Date.valueOf(HOJE));
+		// A planilha já foi lida desde o dia da posição (HU-32): nada de passado a buscar.
+		jdbc.update("insert into atualizacao_fonte (fonte, tentou_em, falhou, cobre_desde) values ('tesouro', "
+				+ "now() - interval '1 hour', false, ?)", java.sql.Date.valueOf(HOJE));
 
 		atualizar(dono);
 
-		verify(fonte, never()).tesouro();
+		verify(fonte, never()).tesouro(any());
+	}
+
+	private static LocalDate diasUteisAtras(int n) {
+		var dia = HOJE;
+		while (dia.getDayOfWeek() == DayOfWeek.SATURDAY || dia.getDayOfWeek() == DayOfWeek.SUNDAY) {
+			dia = dia.minusDays(1);
+		}
+		for (int i = 0; i < n; i++) {
+			dia = dia.minusDays(1);
+			while (dia.getDayOfWeek() == DayOfWeek.SATURDAY || dia.getDayOfWeek() == DayOfWeek.SUNDAY) {
+				dia = dia.minusDays(1);
+			}
+		}
+		return dia;
+	}
+
+	private String tesouro() {
+		return criar(Map.of("tipo", "TESOURO", "tesouroTipo", "IPCA", "tesouroAno", 2035, "quantidade", 1, "valor",
+				3000));
+	}
+
+	private List<LocalDate> diasGuardados(String codigo) {
+		return jdbc.queryForList("select data from cotacao_diaria where codigo = ? order by data", LocalDate.class,
+				codigo);
+	}
+
+	@Test
+	void tesouroPreencheOsDiasSemAbrir() {
+		var id = tesouro();
+		var antigo = diasUteisAtras(6);
+		jdbc.update("update movimentacao_investimento set data = ? where investimento_id = ?::uuid",
+				java.sql.Date.valueOf(antigo), id);
+		jdbc.update("insert into cotacao (id, tipo, codigo, preco, referencia, atualizado_em, fonte) values "
+				+ "(gen_random_uuid(), 'TESOURO', 'Tesouro IPCA+ 2035', 3388, ?, now() - interval '6 days', 'tesouro')",
+				java.sql.Date.valueOf(antigo));
+		jdbc.update("insert into cotacao_diaria (tipo, codigo, data, preco) values ('TESOURO', 'Tesouro IPCA+ 2035', ?, 3388)",
+				java.sql.Date.valueOf(antigo));
+
+		atualizar(dono);
+
+		var esperado = new ArrayList<LocalDate>();
+		for (int n = 6; n >= 0; n--) {
+			esperado.add(diasUteisAtras(n));
+		}
+		assertThat(diasGuardados("Tesouro IPCA+ 2035")).containsExactlyElementsOf(esperado);
+		assertThat(jdbc.queryForObject("select preco from cotacao_diaria where codigo = 'Tesouro IPCA+ 2035' and data = ?",
+				BigDecimal.class, java.sql.Date.valueOf(diasUteisAtras(0))))
+			.isEqualByComparingTo("3400");
+	}
+
+	@Test
+	void tesouroResgatadoGanhaPassado() {
+		var id = tesouro();
+		var inicio = HOJE.minusDays(60);
+		jdbc.update("update movimentacao_investimento set data = ? where investimento_id = ?::uuid",
+				java.sql.Date.valueOf(inicio), id);
+		var r = api.post("/api/investimentos/" + id + "/movimentacoes",
+				Map.of("tipo", "RESGATE", "quantidade", 1, "data", HOJE.minusDays(30).toString()), dono);
+		assertThat(r.status()).isEqualTo(201);
+
+		atualizar(dono);
+
+		verify(fonte).tesouro(org.mockito.ArgumentMatchers
+			.argThat(m -> inicio.equals(m.get("Tesouro IPCA+ 2035"))));
+		var dias = diasGuardados("Tesouro IPCA+ 2035");
+		assertThat(dias.getFirst()).isAfterOrEqualTo(inicio).isBefore(inicio.plusDays(4));
+		assertThat(dias.getLast()).isEqualTo(diasUteisAtras(0));
+	}
+
+	@Test
+	void tesouroDeOutroDonoNaoTiraOPassado() {
+		var selic = criar(Map.of("tipo", "TESOURO", "tesouroTipo", "SELIC", "tesouroAno", 2029, "quantidade", 1,
+				"valor", 16000));
+		jdbc.update("update movimentacao_investimento set data = ? where investimento_id = ?::uuid",
+				java.sql.Date.valueOf(HOJE.minusDays(60)), selic);
+		atualizar(dono);
+		// Outro dono, com outro título desde 30 dias atrás e só o preço de ontem guardado (como a V14 deixa).
+		var outro = api.novoDono();
+		var r = api.post("/api/investimentos", Map.of("tipo", "TESOURO", "tesouroTipo", "IPCA", "tesouroAno", 2035,
+				"quantidade", 1, "valor", 3000), outro);
+		jdbc.update("update movimentacao_investimento set data = ? where investimento_id = ?::uuid",
+				java.sql.Date.valueOf(HOJE.minusDays(30)), r.texto("id"));
+		var ontem = diasUteisAtras(1);
+		jdbc.update("insert into cotacao (id, tipo, codigo, preco, referencia, atualizado_em, fonte) values "
+				+ "(gen_random_uuid(), 'TESOURO', 'Tesouro IPCA+ 2035', 3398, ?, now() - interval '1 hour', 'tesouro') "
+				+ "on conflict (tipo, codigo) do update set preco = 3398, referencia = excluded.referencia",
+				java.sql.Date.valueOf(ontem));
+		jdbc.update("delete from cotacao_diaria where codigo = 'Tesouro IPCA+ 2035'");
+		jdbc.update("insert into cotacao_diaria (tipo, codigo, data, preco) values ('TESOURO', 'Tesouro IPCA+ 2035', ?, 3398)",
+				java.sql.Date.valueOf(ontem));
+		jdbc.update("update atualizacao_fonte set tentou_em = now() - interval '1 hour' where fonte = 'tesouro'");
+
+		atualizar(outro);
+
+		assertThat(diasGuardados("Tesouro IPCA+ 2035").getFirst()).isBefore(HOJE.minusDays(26));
 	}
 
 	@Test

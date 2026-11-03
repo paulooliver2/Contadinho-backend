@@ -5,6 +5,7 @@ import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.NavigableMap;
 
@@ -79,8 +80,8 @@ class FontesConfig {
 			}
 
 			@Override
-			public Map<String, Preco> tesouro() {
-				return tesouro.tesouro();
+			public Map<String, List<Preco>> tesouro(Map<String, LocalDate> desde) {
+				return tesouro.tesouro(desde);
 			}
 
 			@Override

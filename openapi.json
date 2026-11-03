@@ -1494,6 +1494,86 @@
         "security" : [ ]
       }
     },
+    "/api/investimentos/{id}" : {
+      "get" : {
+        "tags" : [ "investimentos-controller" ],
+        "operationId" : "detalhe",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PosicaoDetalhe"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "investimentos-controller" ],
+        "operationId" : "excluir_5",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      },
+      "patch" : {
+        "tags" : [ "investimentos-controller" ],
+        "operationId" : "alterarClasse",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/NovaClasse"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PosicaoDetalhe"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/resumo/proximos" : {
       "get" : {
         "tags" : [ "resumo-controller" ],
@@ -1609,17 +1689,18 @@
         }
       }
     },
-    "/api/investimentos/{id}" : {
+    "/api/investimentos/evolucao" : {
       "get" : {
         "tags" : [ "investimentos-controller" ],
-        "operationId" : "detalhe",
+        "operationId" : "evolucao",
         "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
+          "name" : "periodo",
+          "in" : "query",
+          "required" : false,
           "schema" : {
             "type" : "string",
-            "format" : "uuid"
+            "default" : "MES",
+            "enum" : [ "DIA", "MES", "SEIS_MESES", "DOZE_MESES" ]
           }
         } ],
         "responses" : {
@@ -1628,28 +1709,10 @@
             "content" : {
               "application/json" : {
                 "schema" : {
-                  "$ref" : "#/components/schemas/PosicaoDetalhe"
+                  "$ref" : "#/components/schemas/EvolucaoResposta"
                 }
               }
             }
-          }
-        }
-      },
-      "delete" : {
-        "tags" : [ "investimentos-controller" ],
-        "operationId" : "excluir_5",
-        "parameters" : [ {
-          "name" : "id",
-          "in" : "path",
-          "required" : true,
-          "schema" : {
-            "type" : "string",
-            "format" : "uuid"
-          }
-        } ],
-        "responses" : {
-          "204" : {
-            "description" : "No Content"
           }
         }
       }
@@ -2858,6 +2921,9 @@
           "vencimento" : {
             "type" : "string",
             "format" : "date"
+          },
+          "fii" : {
+            "type" : "boolean"
           }
         }
       },
@@ -2970,6 +3036,9 @@
           "resultado" : {
             "type" : "number"
           },
+          "fii" : {
+            "type" : "boolean"
+          },
           "movimentacoes" : {
             "type" : "array",
             "items" : {
@@ -2977,7 +3046,7 @@
             }
           }
         },
-        "required" : [ "aplicado", "aplicadoInicial", "codigo", "conferido", "desatualizado", "encerrada", "id", "movimentacoes", "tipo" ]
+        "required" : [ "aplicado", "aplicadoInicial", "codigo", "conferido", "desatualizado", "encerrada", "fii", "id", "movimentacoes", "tipo" ]
       },
       "NovaMovimentacao" : {
         "type" : "object",
@@ -3028,9 +3097,31 @@
             "items" : {
               "$ref" : "#/components/schemas/PosicaoResumo"
             }
+          },
+          "distribuicao" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/FatiaResposta"
+            }
           }
         },
-        "required" : [ "ganho", "patrimonio", "posicoes", "semCotacao", "totalAplicado" ]
+        "required" : [ "distribuicao", "ganho", "patrimonio", "posicoes", "semCotacao", "totalAplicado" ]
+      },
+      "FatiaResposta" : {
+        "type" : "object",
+        "properties" : {
+          "classe" : {
+            "type" : "string",
+            "enum" : [ "RENDA_FIXA", "ACOES", "FIIS", "CRIPTO" ]
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "percentual" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "classe", "percentual", "valor" ]
       },
       "PosicaoResumo" : {
         "type" : "object",
@@ -3110,9 +3201,12 @@
           },
           "resultado" : {
             "type" : "number"
+          },
+          "fii" : {
+            "type" : "boolean"
           }
         },
-        "required" : [ "aplicado", "aplicadoInicial", "codigo", "conferido", "desatualizado", "encerrada", "id", "tipo" ]
+        "required" : [ "aplicado", "aplicadoInicial", "codigo", "conferido", "desatualizado", "encerrada", "fii", "id", "tipo" ]
       },
       "PagamentoContaPedido" : {
         "type" : "object",
@@ -3472,6 +3566,15 @@
           }
         },
         "required" : [ "email", "nome", "senha" ]
+      },
+      "NovaClasse" : {
+        "type" : "object",
+        "properties" : {
+          "fii" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "fii" ]
       },
       "AReceberDoInicioResposta" : {
         "type" : "object",
@@ -3863,6 +3966,67 @@
           }
         },
         "required" : [ "emAberto", "numero", "valor" ]
+      },
+      "EvolucaoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "de" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "ate" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "desdeCadastro" : {
+            "type" : "boolean"
+          },
+          "pontos" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PontoResposta"
+            }
+          },
+          "valorInicial" : {
+            "type" : "number"
+          },
+          "valorFinal" : {
+            "type" : "number"
+          },
+          "aportes" : {
+            "type" : "number"
+          },
+          "resgates" : {
+            "type" : "number"
+          },
+          "ganho" : {
+            "type" : "number"
+          },
+          "ganhoPercentual" : {
+            "type" : "number"
+          },
+          "cdiPercentual" : {
+            "type" : "number"
+          },
+          "cdiAte" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        },
+        "required" : [ "aportes", "ate", "de", "desdeCadastro", "ganho", "pontos", "resgates", "valorFinal", "valorInicial" ]
+      },
+      "PontoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "data" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "valor" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "data", "valor" ]
       },
       "CriptoEncontrada" : {
         "type" : "object",

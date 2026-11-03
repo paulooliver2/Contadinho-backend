@@ -29,6 +29,8 @@ public class Cotacao {
 
 	private LocalDate referencia;
 
+	private LocalDate historicoDesde;
+
 	private Instant atualizadoEm;
 
 	private Instant falhouEm;
@@ -70,6 +72,11 @@ public class Cotacao {
 
 	public String getFonte() {
 		return fonte;
+	}
+
+	/** HU-32: só no Tesouro, até onde a planilha já foi lida para este título. */
+	public LocalDate getHistoricoDesde() {
+		return historicoDesde;
 	}
 
 }

@@ -88,6 +88,38 @@ public final class ValorAtual {
 		return Resultado.de(saldo, aplicado, ultimo);
 	}
 
+	/**
+	 * HU-32: o saldo de cada dia do calendário, da aplicação até {@code ate}, numa passada só pelo CDI. Cada dia vale o
+	 * mesmo que {@link #rendaFixa} com as movimentações e o CDI até aquele dia (ou o aplicado, antes do primeiro CDI).
+	 */
+	public static NavigableMap<LocalDate, BigDecimal> saldosPorDia(Investimento investimento,
+			List<Movimentacao> movimentacoes, NavigableMap<LocalDate, BigDecimal> cdi, LocalDate ate) {
+		var serie = new java.util.TreeMap<LocalDate, BigDecimal>();
+		var ordem = new ArrayDeque<>(movimentacoes.stream().sorted(ORDEM).toList());
+		var inicial = ordem.pollFirst();
+		if (inicial == null) {
+			return serie;
+		}
+		var vencimento = investimento.getVencimento();
+		var taxa = investimento.getTaxa().divide(CEM, MathContext.DECIMAL128);
+		var prefixado = investimento.getIndexador() == Investimento.Indexador.PREFIXADO
+				? BigDecimal.valueOf(Math.pow(1 + investimento.getTaxa().doubleValue() / 100, 1.0 / 252)) : null;
+		var saldo = inicial.getValor();
+		for (var dia = inicial.getData(); !dia.isAfter(ate); dia = dia.plusDays(1)) {
+			var hoje = dia;
+			var taxaDoDia = cdi.get(dia);
+			if (taxaDoDia != null && dia.isAfter(inicial.getData()) && (vencimento == null || !dia.isAfter(vencimento))) {
+				saldo = resgatar(saldo, ordem, m -> m.getData().isBefore(hoje));
+				var fator = prefixado != null ? prefixado
+						: BigDecimal.ONE.add(taxaDoDia.divide(CEM, MathContext.DECIMAL128).multiply(taxa));
+				saldo = saldo.multiply(fator, MathContext.DECIMAL128);
+			}
+			saldo = resgatar(saldo, ordem, m -> !m.getData().isAfter(hoje));
+			serie.put(dia, saldo.setScale(2, RoundingMode.HALF_UP));
+		}
+		return serie;
+	}
+
 	/** Renda fixa encerrada: o que voltou menos o que foi aplicado no início. */
 	public static BigDecimal resultadoEncerrada(List<Movimentacao> movimentacoes) {
 		var resultado = BigDecimal.ZERO;
