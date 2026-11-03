@@ -55,24 +55,30 @@ public class ImportacaoServico {
 
 	private final Pessoas pessoas;
 
+	private final AdicionalServico adicionais;
+
 	private final Clock clock;
 
 	public ImportacaoServico(FaturaServico faturas, LancamentoRepositorio lancamentos, ImportacaoRepositorio importacoes,
-			ResponsavelServico responsaveis, ApplicationEventPublisher eventos, Pessoas pessoas, Clock clock) {
+			ResponsavelServico responsaveis, ApplicationEventPublisher eventos, Pessoas pessoas,
+			AdicionalServico adicionais, Clock clock) {
 		this.faturas = faturas;
 		this.lancamentos = lancamentos;
 		this.importacoes = importacoes;
 		this.responsaveis = responsaveis;
 		this.eventos = eventos;
 		this.pessoas = pessoas;
+		this.adicionais = adicionais;
 		this.clock = clock;
 	}
 
 	/**
 	 * Um lançamento do arquivo na prévia: já importado antes (HU-07) ou novo, talvez parecido com um digitado. O novo
-	 * pode vir com a pessoa {@code sugerida} pelas atribuições anteriores (RN-18).
+	 * pode vir com a pessoa do cartão adicional que fez a compra (RN-19) ou, sem ela, com a pessoa {@code sugerida}
+	 * pelas atribuições anteriores (RN-18).
 	 */
-	public record ItemPrevia(ArquivoFatura.Item item, boolean jaExiste, Lancamento parecida, UUID sugerida) {
+	public record ItemPrevia(ArquivoFatura.Item item, boolean jaExiste, Lancamento parecida, UUID doAdicional,
+			UUID sugerida) {
 	}
 
 	public record Previa(Cartao.Ciclo ciclo, ArquivoFatura arquivo, List<ItemPrevia> itens) {
@@ -126,9 +132,13 @@ public class ImportacaoServico {
 			}
 			else {
 				var nova = Lancamento.doArquivo(usuarioId, cartao.getId(), fatura.getId(), importacao.getId(), i.item());
-				// HU-09.2: confirmada a importação, a sugestão vira atribuição e gera o recebível. A regra das
-				// próximas parcelas (RN-17), que o dono escolheu, vale mais que a sugestão.
-				if (i.sugerida() != null) {
+				// HU-38.2: a compra do adicional chega com a pessoa dele. HU-09.2: confirmada a importação, a sugestão
+				// vira atribuição. Os dois geram o recebível. A regra das próximas parcelas (RN-17), que o dono
+				// escolheu, vale mais que os dois.
+				if (i.doAdicional() != null) {
+					nova.atribuir(i.doAdicional());
+				}
+				else if (i.sugerida() != null) {
 					nova.sugerir(i.sugerida());
 				}
 				novas.add(responsaveis.gravarNova(nova).getId());
@@ -157,7 +167,7 @@ public class ImportacaoServico {
 
 	/**
 	 * RN-11 e RN-59: separa os que já existem e casa cada novo com no máximo uma digitada de mesma data e valor. Os
-	 * outros novos ganham a pessoa sugerida (RN-18).
+	 * outros novos ganham a pessoa do adicional (RN-19) ou a sugerida (RN-18).
 	 */
 	private Previa montar(UUID usuarioId, Cartao cartao, ArquivoFatura arquivo, YearMonth mes) {
 		var ids = arquivo.itens().stream().map(ArquivoFatura.Item::idExterno).toList();
@@ -169,10 +179,11 @@ public class ImportacaoServico {
 			.orElse(List.of());
 		var usadas = new HashSet<UUID>();
 		var sugestoes = new HashMap<String, Optional<UUID>>();
+		var porFinal = adicionais.pessoaPorFinal(usuarioId, cartao.getId());
 		var itens = new ArrayList<ItemPrevia>();
 		for (var item : arquivo.itens()) {
 			if (existentes.contains(item.idExterno())) {
-				itens.add(new ItemPrevia(item, true, null, null));
+				itens.add(new ItemPrevia(item, true, null, null, null));
 				continue;
 			}
 			var parecida = digitadas.stream()
@@ -182,11 +193,16 @@ public class ImportacaoServico {
 				.orElse(null);
 			if (parecida != null) {
 				usadas.add(parecida.getId());
-				itens.add(new ItemPrevia(item, false, parecida, null));
+				itens.add(new ItemPrevia(item, false, parecida, null, null));
+				continue;
+			}
+			var doAdicional = item.finalCartao() == null ? null : porFinal.get(item.finalCartao());
+			if (doAdicional != null) {
+				itens.add(new ItemPrevia(item, false, null, doAdicional, null));
 				continue;
 			}
 			var sugerida = sugestoes.computeIfAbsent(Descricoes.normalizar(item.descricao()), d -> sugerida(usuarioId, d));
-			itens.add(new ItemPrevia(item, false, null, sugerida.orElse(null)));
+			itens.add(new ItemPrevia(item, false, null, null, sugerida.orElse(null)));
 		}
 		return new Previa(faturas.ciclo(cartao, mes), arquivo, itens);
 	}

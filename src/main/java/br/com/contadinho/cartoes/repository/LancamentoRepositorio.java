@@ -36,6 +36,11 @@ public interface LancamentoRepositorio extends JpaRepository<Lancamento, UUID> {
 	/** RN-59: candidatas a casar com as compras do arquivo. */
 	List<Lancamento> findByFaturaIdAndOrigemOrderByDataAscDescricao(UUID faturaId, Lancamento.Origem origem);
 
+	/** HU-38.3: os arquivos deste cartão trazem o final de cada compra? */
+	boolean existsByCartaoIdAndFinalCartaoIsNotNull(UUID cartaoId);
+
+	boolean existsByCartaoIdAndOrigem(UUID cartaoId, Lancamento.Origem origem);
+
 	/** RN-18: as duas últimas vezes que a descrição apareceu. */
 	List<Lancamento> findTop2ByUsuarioIdAndDescricaoNormalizadaOrderByDataDescIdDesc(UUID usuarioId,
 			String descricaoNormalizada);

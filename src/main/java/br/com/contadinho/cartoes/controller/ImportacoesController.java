@@ -85,6 +85,8 @@ public class ImportacoesController {
 			String finalCartao,
 			@NotNull Boolean jaExiste,
 			ParecidaResposta parecida,
+			/** A pessoa do cartão adicional que fez a compra (RN-19); a compra chega atribuída a ela. */
+			UUID pessoaAdicionalId,
 			/** A pessoa de sempre para esta descrição (RN-18); vira atribuição quando a importação é confirmada. */
 			UUID pessoaSugeridaId) {
 	}
@@ -116,7 +118,8 @@ public class ImportacoesController {
 			var item = i.item();
 			var parecida = i.parecida() == null ? null : new ParecidaResposta(i.parecida().getId(), i.parecida().getDescricao());
 			return new ItemPreviaResposta(item.idExterno(), item.data(), item.descricao(), item.valor(),
-					item.parcelaAtual(), item.parcelaTotal(), item.finalCartao(), i.jaExiste(), parecida, i.sugerida());
+					item.parcelaAtual(), item.parcelaTotal(), item.finalCartao(), i.jaExiste(), parecida, i.doAdicional(),
+					i.sugerida());
 		}).toList();
 		var ciclo = previa.ciclo();
 		int jaExistiam = (int) previa.itens().stream().filter(ImportacaoServico.ItemPrevia::jaExiste).count();
