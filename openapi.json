@@ -850,10 +850,109 @@
         }
       }
     },
+    "/api/investimentos" : {
+      "get" : {
+        "tags" : [ "investimentos-controller" ],
+        "operationId" : "carteira",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Carteira"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post" : {
+        "tags" : [ "investimentos-controller" ],
+        "operationId" : "cadastrar_2",
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/NovoInvestimento"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PosicaoDetalhe"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/investimentos/{id}/movimentacoes" : {
+      "post" : {
+        "tags" : [ "investimentos-controller" ],
+        "operationId" : "movimentar",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "requestBody" : {
+          "content" : {
+            "application/json" : {
+              "schema" : {
+                "$ref" : "#/components/schemas/NovaMovimentacao"
+              }
+            }
+          },
+          "required" : true
+        },
+        "responses" : {
+          "201" : {
+            "description" : "Created",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PosicaoDetalhe"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/investimentos/atualizar" : {
+      "post" : {
+        "tags" : [ "investimentos-controller" ],
+        "operationId" : "atualizar",
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/Carteira"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/gastos" : {
       "post" : {
         "tags" : [ "gastos-controller" ],
-        "operationId" : "cadastrar_2",
+        "operationId" : "cadastrar_3",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -881,7 +980,7 @@
     "/api/contas-fixas" : {
       "post" : {
         "tags" : [ "contas-fixas-controller" ],
-        "operationId" : "cadastrar_3",
+        "operationId" : "cadastrar_4",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1017,7 +1116,7 @@
       },
       "post" : {
         "tags" : [ "cartoes-controller" ],
-        "operationId" : "cadastrar_4",
+        "operationId" : "cadastrar_5",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1208,7 +1307,7 @@
       },
       "post" : {
         "tags" : [ "adicionais-controller" ],
-        "operationId" : "cadastrar_5",
+        "operationId" : "cadastrar_6",
         "parameters" : [ {
           "name" : "cartaoId",
           "in" : "path",
@@ -1369,7 +1468,7 @@
     "/api/auth/cadastro" : {
       "post" : {
         "tags" : [ "autenticacao-controller" ],
-        "operationId" : "cadastrar_6",
+        "operationId" : "cadastrar_7",
         "requestBody" : {
           "content" : {
             "application/json" : {
@@ -1503,6 +1602,80 @@
               "application/json" : {
                 "schema" : {
                   "$ref" : "#/components/schemas/HistoricoResposta"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/investimentos/{id}" : {
+      "get" : {
+        "tags" : [ "investimentos-controller" ],
+        "operationId" : "detalhe",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PosicaoDetalhe"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete" : {
+        "tags" : [ "investimentos-controller" ],
+        "operationId" : "excluir_5",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "204" : {
+            "description" : "No Content"
+          }
+        }
+      }
+    },
+    "/api/investimentos/cripto" : {
+      "get" : {
+        "tags" : [ "investimentos-controller" ],
+        "operationId" : "buscarCripto",
+        "parameters" : [ {
+          "name" : "busca",
+          "in" : "query",
+          "required" : false,
+          "schema" : {
+            "type" : "string"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "type" : "array",
+                  "items" : {
+                    "$ref" : "#/components/schemas/CriptoEncontrada"
+                  }
                 }
               }
             }
@@ -1776,7 +1949,7 @@
     "/api/receber/emprestimos/{id}" : {
       "delete" : {
         "tags" : [ "emprestimos-controller" ],
-        "operationId" : "excluir_5",
+        "operationId" : "excluir_6",
         "parameters" : [ {
           "name" : "id",
           "in" : "path",
@@ -1789,6 +1962,41 @@
         "responses" : {
           "204" : {
             "description" : "No Content"
+          }
+        }
+      }
+    },
+    "/api/investimentos/{id}/movimentacoes/{movimentacaoId}" : {
+      "delete" : {
+        "tags" : [ "investimentos-controller" ],
+        "operationId" : "excluirMovimentacao",
+        "parameters" : [ {
+          "name" : "id",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        }, {
+          "name" : "movimentacaoId",
+          "in" : "path",
+          "required" : true,
+          "schema" : {
+            "type" : "string",
+            "format" : "uuid"
+          }
+        } ],
+        "responses" : {
+          "200" : {
+            "description" : "OK",
+            "content" : {
+              "application/json" : {
+                "schema" : {
+                  "$ref" : "#/components/schemas/PosicaoDetalhe"
+                }
+              }
+            }
           }
         }
       }
@@ -2602,6 +2810,310 @@
         },
         "required" : [ "numero", "valor" ]
       },
+      "NovoInvestimento" : {
+        "type" : "object",
+        "properties" : {
+          "tipo" : {
+            "type" : "string",
+            "enum" : [ "ACAO", "CRIPTO", "TESOURO", "RENDA_FIXA" ]
+          },
+          "codigo" : {
+            "type" : "string"
+          },
+          "quantidade" : {
+            "type" : "number"
+          },
+          "preco" : {
+            "type" : "number"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "tesouroTipo" : {
+            "type" : "string",
+            "enum" : [ "SELIC", "IPCA", "IPCA_JUROS", "PREFIXADO", "PREFIXADO_JUROS", "RENDA_MAIS", "EDUCA_MAIS" ]
+          },
+          "tesouroAno" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "produto" : {
+            "type" : "string",
+            "enum" : [ "CDB", "LCI", "LCA" ]
+          },
+          "emissor" : {
+            "type" : "string"
+          },
+          "indexador" : {
+            "type" : "string",
+            "enum" : [ "CDI", "PREFIXADO" ]
+          },
+          "taxa" : {
+            "type" : "number"
+          },
+          "dataAplicacao" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "vencimento" : {
+            "type" : "string",
+            "format" : "date"
+          }
+        }
+      },
+      "MovimentacaoResposta" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "tipo" : {
+            "type" : "string",
+            "enum" : [ "INICIAL", "APORTE", "RESGATE" ]
+          },
+          "data" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "quantidade" : {
+            "type" : "number"
+          },
+          "preco" : {
+            "type" : "number"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "total" : {
+            "type" : "boolean"
+          }
+        },
+        "required" : [ "data", "id", "tipo", "total" ]
+      },
+      "PosicaoDetalhe" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "tipo" : {
+            "type" : "string",
+            "enum" : [ "ACAO", "CRIPTO", "TESOURO", "RENDA_FIXA" ]
+          },
+          "codigo" : {
+            "type" : "string"
+          },
+          "nome" : {
+            "type" : "string"
+          },
+          "simbolo" : {
+            "type" : "string"
+          },
+          "produto" : {
+            "type" : "string",
+            "enum" : [ "CDB", "LCI", "LCA" ]
+          },
+          "indexador" : {
+            "type" : "string",
+            "enum" : [ "CDI", "PREFIXADO" ]
+          },
+          "taxa" : {
+            "type" : "number"
+          },
+          "vencimento" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "conferido" : {
+            "type" : "boolean"
+          },
+          "quantidade" : {
+            "type" : "number"
+          },
+          "precoMedio" : {
+            "type" : "number"
+          },
+          "aplicado" : {
+            "type" : "number"
+          },
+          "encerrada" : {
+            "type" : "boolean"
+          },
+          "aplicadoInicial" : {
+            "type" : "number"
+          },
+          "valorAtual" : {
+            "type" : "number"
+          },
+          "ganho" : {
+            "type" : "number"
+          },
+          "ganhoPercentual" : {
+            "type" : "number"
+          },
+          "cotacao" : {
+            "type" : "number"
+          },
+          "atualizadoEm" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "cdiAte" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "desatualizado" : {
+            "type" : "boolean"
+          },
+          "resultado" : {
+            "type" : "number"
+          },
+          "movimentacoes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/MovimentacaoResposta"
+            }
+          }
+        },
+        "required" : [ "aplicado", "aplicadoInicial", "codigo", "conferido", "desatualizado", "encerrada", "id", "movimentacoes", "tipo" ]
+      },
+      "NovaMovimentacao" : {
+        "type" : "object",
+        "properties" : {
+          "tipo" : {
+            "type" : "string",
+            "enum" : [ "INICIAL", "APORTE", "RESGATE" ]
+          },
+          "data" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "quantidade" : {
+            "type" : "number"
+          },
+          "preco" : {
+            "type" : "number"
+          },
+          "valor" : {
+            "type" : "number"
+          },
+          "total" : {
+            "type" : "boolean"
+          }
+        }
+      },
+      "Carteira" : {
+        "type" : "object",
+        "properties" : {
+          "totalAplicado" : {
+            "type" : "number"
+          },
+          "patrimonio" : {
+            "type" : "number"
+          },
+          "ganho" : {
+            "type" : "number"
+          },
+          "ganhoPercentual" : {
+            "type" : "number"
+          },
+          "semCotacao" : {
+            "type" : "integer",
+            "format" : "int32"
+          },
+          "posicoes" : {
+            "type" : "array",
+            "items" : {
+              "$ref" : "#/components/schemas/PosicaoResumo"
+            }
+          }
+        },
+        "required" : [ "ganho", "patrimonio", "posicoes", "semCotacao", "totalAplicado" ]
+      },
+      "PosicaoResumo" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string",
+            "format" : "uuid"
+          },
+          "tipo" : {
+            "type" : "string",
+            "enum" : [ "ACAO", "CRIPTO", "TESOURO", "RENDA_FIXA" ]
+          },
+          "codigo" : {
+            "type" : "string"
+          },
+          "nome" : {
+            "type" : "string"
+          },
+          "simbolo" : {
+            "type" : "string"
+          },
+          "produto" : {
+            "type" : "string",
+            "enum" : [ "CDB", "LCI", "LCA" ]
+          },
+          "indexador" : {
+            "type" : "string",
+            "enum" : [ "CDI", "PREFIXADO" ]
+          },
+          "taxa" : {
+            "type" : "number"
+          },
+          "vencimento" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "conferido" : {
+            "type" : "boolean"
+          },
+          "quantidade" : {
+            "type" : "number"
+          },
+          "precoMedio" : {
+            "type" : "number"
+          },
+          "aplicado" : {
+            "type" : "number"
+          },
+          "encerrada" : {
+            "type" : "boolean"
+          },
+          "aplicadoInicial" : {
+            "type" : "number"
+          },
+          "valorAtual" : {
+            "type" : "number"
+          },
+          "ganho" : {
+            "type" : "number"
+          },
+          "ganhoPercentual" : {
+            "type" : "number"
+          },
+          "cotacao" : {
+            "type" : "number"
+          },
+          "atualizadoEm" : {
+            "type" : "string",
+            "format" : "date-time"
+          },
+          "cdiAte" : {
+            "type" : "string",
+            "format" : "date"
+          },
+          "desatualizado" : {
+            "type" : "boolean"
+          },
+          "resultado" : {
+            "type" : "number"
+          }
+        },
+        "required" : [ "aplicado", "aplicadoInicial", "codigo", "conferido", "desatualizado", "encerrada", "id", "tipo" ]
+      },
       "PagamentoContaPedido" : {
         "type" : "object",
         "properties" : {
@@ -3351,6 +3863,21 @@
           }
         },
         "required" : [ "emAberto", "numero", "valor" ]
+      },
+      "CriptoEncontrada" : {
+        "type" : "object",
+        "properties" : {
+          "id" : {
+            "type" : "string"
+          },
+          "simbolo" : {
+            "type" : "string"
+          },
+          "nome" : {
+            "type" : "string"
+          }
+        },
+        "required" : [ "id", "nome", "simbolo" ]
       },
       "DesfazerResposta" : {
         "type" : "object",
